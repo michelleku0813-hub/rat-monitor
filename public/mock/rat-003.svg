@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480">
+  <defs>
+    <radialGradient id="g" cx="60%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#353e48"/>
+      <stop offset="100%" stop-color="#101418"/>
+    </radialGradient>
+  </defs>
+  <rect width="640" height="480" fill="url(#g)"/>
+  <text x="16" y="28" fill="#7a8794" font-family="monospace" font-size="12">IR · DEMO · FRAME 003</text>
+  <ellipse cx="380" cy="250" rx="95" ry="40" fill="#8595a3" opacity="0.85"/>
+  <ellipse cx="460" cy="235" rx="36" ry="26" fill="#95a5b3"/>
+  <path d="M290 255 Q240 230 200 270" stroke="#758595" stroke-width="9" fill="none" stroke-linecap="round"/>
+  <rect x="300" y="200" width="180" height="90" fill="none" stroke="#e85d4c" stroke-width="2" stroke-dasharray="4 3"/>
+  <text x="304" y="194" fill="#e85d4c" font-family="sans-serif" font-size="11">rat 0.91</text>
+  <text x="16" y="460" fill="#5a6570" font-family="monospace" font-size="11">Prototype mock image  not live camera feed</text>
+</svg>
