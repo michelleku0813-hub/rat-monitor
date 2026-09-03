@@ -58,6 +58,15 @@ export interface Location {
   name: string;
   type: LocationType;
   address: string;
+  district: string;
+  /** Coordinates are kept for future map-provider integration. */
+  latitude: number;
+  longitude: number;
+  /** Percentage position used by the lightweight prototype SVG map. */
+  map_position: {
+    x: number;
+    y: number;
+  };
   monitoring_hours: number;
 }
 
@@ -69,11 +78,30 @@ export interface Device {
   location_id: string;
   status: DeviceStatus;
   battery: number;
+  power_mode: string;
+  voltage: number;
+  power_watts: number;
+  memory_used_mb: number;
+  memory_total_mb: number;
+  cpu_usage: number;
+  temperature_c: number;
   network: NetworkType;
   signal_strength: number;
   last_seen: string;
   firmware_version: string;
   ai_model_version: string;
+}
+
+/** A prototype-only email dispatch record for a dead-rat detection. */
+export interface DeadRatNotification {
+  notification_id: string;
+  location_id: string;
+  device_id: string;
+  detected_at: string;
+  recipient: string;
+  subject: string;
+  body: string;
+  delivery_status: 'sent';
 }
 
 export interface DashboardSummary {

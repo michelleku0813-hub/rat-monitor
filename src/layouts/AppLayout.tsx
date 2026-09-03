@@ -1,16 +1,22 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useState } from 'react';
 
-const NAV: { to: string; label: string; end?: boolean }[] = [
-  { to: '/', label: 'Overview', end: true },
-  { to: '/analysis', label: 'Activity Analysis' },
-  { to: '/events', label: 'Detection Events' },
-  { to: '/locations', label: 'Locations' },
-  { to: '/devices', label: 'Devices' },
+const NAV: { to: string; label: string; icon: string; end?: boolean }[] = [
+  { to: '/', label: '監測總覽', icon: '▦', end: true },
+  { to: '/analysis', label: '活動分析', icon: '⌁' },
+  { to: '/events', label: '偵測事件', icon: '◉' },
+  { to: '/locations', label: '台北機台地圖', icon: '⌖' },
+  { to: '/devices', label: '設備健康', icon: '▤' },
 ];
 
-export function AppLayout() {
+interface AppLayoutProps {
+  userEmail: string;
+  onSignOut: () => void;
+}
+
+export function AppLayout({ userEmail, onSignOut }: AppLayoutProps) {
   const [open, setOpen] = useState(false);
+  const userInitial = userEmail.slice(0, 1).toUpperCase();
 
   return (
     <>
@@ -30,8 +36,13 @@ export function AppLayout() {
 
         <aside className={`sidebar ${open ? 'open' : ''}`}>
           <div className="sidebar__brand">
-            <div className="sidebar__brand-name">AIoT 智慧鼠患監測</div>
-            <div className="sidebar__brand-sub">Smart Rat Activity Monitoring</div>
+            <div className="sidebar__brand-lockup">
+              <span className="sidebar__brand-mark">◈</span>
+              <div>
+                <div className="sidebar__brand-name">AIoT 智慧鼠患監測</div>
+                <div className="sidebar__brand-sub">TAIPEI OPERATIONS CENTER</div>
+              </div>
+            </div>
           </div>
 
           <nav className="sidebar__nav" aria-label="主選單">
@@ -43,28 +54,43 @@ export function AppLayout() {
                 className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
                 onClick={() => setOpen(false)}
               >
-                <span className="nav-link__icon">▸</span>
+                <span className="nav-link__icon">{item.icon}</span>
                 {item.label}
               </NavLink>
             ))}
           </nav>
 
           <div className="sidebar__footer">
-            Data Service → Mock JSON
+            <span className="sidebar__footer-dot" /> 系統資料流正常
             <br />
-            未來可替換為 REST API
+            Prototype · Mock Data
           </div>
         </aside>
 
         <main className="main">
-          <button
-            type="button"
-            className="mobile-nav-toggle"
-            onClick={() => setOpen((v) => !v)}
-            aria-expanded={open}
-          >
-            選單
-          </button>
+          <header className="app-topbar">
+            <div className="app-topbar__left">
+              <button
+                type="button"
+                className="mobile-nav-toggle"
+                onClick={() => setOpen((v) => !v)}
+                aria-expanded={open}
+              >
+                選單
+              </button>
+              <span className="app-topbar__secure"><i /> 安全連線 · TLS 模擬</span>
+            </div>
+            <div className="app-topbar__profile">
+              <span className="app-topbar__user-copy">
+                <strong>營運人員</strong>
+                <small>{userEmail}</small>
+              </span>
+              <span className="app-topbar__avatar" aria-hidden>{userInitial}</span>
+              <button type="button" className="app-topbar__signout" onClick={onSignOut}>
+                登出
+              </button>
+            </div>
+          </header>
           <Outlet />
         </main>
       </div>

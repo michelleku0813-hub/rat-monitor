@@ -3,6 +3,7 @@ import type {
   CameraSnapshot,
   DailyActivity,
   DashboardSummary,
+  DeadRatNotification,
   DetectionEvent,
   Device,
   EventFilters,
@@ -404,6 +405,42 @@ export async function getOpsAlerts(): Promise<OpsAlert[]> {
 /** GET /api/v1/devices */
 export async function getDevices(): Promise<Device[]> {
   return delay([...DEVICES]);
+}
+
+/**
+ * Prototype notification flow.  A production version should invoke a protected
+ * backend endpoint, which in turn talks to the email provider.
+ */
+export async function simulateDeadRatNotification(
+  locationId: string,
+): Promise<DeadRatNotification> {
+  const location = LOCATION_MAP[locationId] ?? LOCATIONS[0];
+  const device = DEVICES.find((item) => item.location_id === location.location_id) ?? DEVICES[0];
+  const detectedAt = new Date().toISOString();
+  const body = `辨識到死老鼠\n時間：${new Intl.DateTimeFormat('zh-TW', {
+    timeZone: TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(new Date(detectedAt))}\n地點：${location.name}（${location.address}）`;
+
+  return delay(
+    {
+      notification_id: `MAIL-${Date.now()}`,
+      location_id: location.location_id,
+      device_id: device.device_id,
+      detected_at: detectedAt,
+      recipient: 'ops@example.tw',
+      subject: `[緊急通報] 辨識到死老鼠｜${location.name}`,
+      body,
+      delivery_status: 'sent',
+    },
+    700,
+  );
 }
 
 export async function getLocations(): Promise<LocationStats[]> {

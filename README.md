@@ -51,11 +51,12 @@ npm run build
 
 ## 頁面
 
-- **Overview** — 6 KPI + 營運告警 + **即時影像監看** + 最近活動 + 24h / 7 日 / 場域圖表
+- **登入頁** — 帳密＋MFA 的兩步驟介面展示（填入展示帳號後可進入系統）
+- **監測總覽** — KPI + 營運告警 + **死鼠辨識／通知信模擬** + 即時影像監看 + 最近活動 + 24h / 7 日 / 場域圖表
 - **Activity Analysis** — Heatmap、趨勢、場域／日期篩選
 - **Detection Events** — 事件列表與示意 IR 影像 / 資料驅動 Bounding Box
-- **Locations** — 市場 A、夜市 B、巷道 C
-- **Devices** — RAT-TPE-001/002/003（003 為 Warning）
+- **台北機台地圖** — 可點選的 SVG 台北市行政區示意圖、場域與機台連線狀態
+- **設備健康** — RAT-TPE-001/002/003 的電池、供電電壓／功耗、記憶體、CPU、溫度與網路遙測（003 為 Warning）
 
 頁面頂部固定標示：**Prototype – Demo Data**。即時影像區另標 **Simulated Live · Demo Data**。
 
@@ -75,9 +76,12 @@ npm run build
 - `GET /api/v1/cameras/snapshots`
 - `GET /api/v1/events`
 - `GET /api/v1/devices`
+- `POST /api/v1/notifications/dead-rat`（目前由前端模擬）
 
 正式 PostgreSQL 規劃見 `docs/schema.sql`。
 
 ## 本版未實作
 
-Authentication、真實 FastAPI / PostgreSQL、YOLO、IoT 硬體通訊。
+真實 Authentication／MFA／權限控管、真實寄信、FastAPI / PostgreSQL、YOLO、IoT 硬體通訊。
+
+登入與死鼠通知目前僅為前端介面流程，並沒有驗證真實帳密或寄出 Email；正式版應由後端提供 HTTPS、受保護的 Session／Token、MFA、RBAC 與郵件服務整合。

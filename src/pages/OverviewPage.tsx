@@ -11,6 +11,7 @@ import { DailyLineChart, HourlyBarChart, LocationBarChart } from '../components/
 import { LiveMonitor } from '../components/LiveMonitor';
 import { OpsAlertBar } from '../components/OpsAlertBar';
 import { RecentEventsStrip } from '../components/RecentEventsStrip';
+import { DeadRatSimulator } from '../components/DeadRatSimulator';
 import { formatPercent, formatTime } from '../utils/format';
 
 export function OverviewPage() {
@@ -31,11 +32,11 @@ export function OverviewPage() {
     <div>
       <header className="page-header">
         <h1>
-          Overview
+          城市監測總覽
           <span className="demo-chip">Demo Data</span>
         </h1>
         <p>
-          以「鼠隻活動偵測事件」（Detection Events）呈現監測概況。事件數不等於老鼠個體數或族群數。
+          集中檢視台北市監測設備、AI 偵測事件與營運健康度。鼠隻活動事件不等於老鼠個體數或族群數。
         </p>
       </header>
 
@@ -75,6 +76,8 @@ export function OverviewPage() {
       </div>
 
       <OpsAlertBar />
+
+      <DeadRatSimulator />
 
       <div className="overview-stack">
         <LiveMonitor />
