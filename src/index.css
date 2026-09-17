@@ -2087,6 +2087,15 @@ input:focus-visible {
   background: #edf3f5;
 }
 
+.auth-loading {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  background: #edf3f5;
+  color: #42616e;
+  font-size: 0.85rem;
+}
+
 .login-page__brand-panel {
   position: relative;
   display: flex;
@@ -2348,6 +2357,8 @@ input:focus-visible {
 }
 
 .login-form__submit:hover { background: linear-gradient(135deg, #0d8278, #085e6c); }
+.login-form__submit:disabled,
+.login-form__text-button:disabled { cursor: wait; opacity: 0.65; }
 
 .login-form__demo-button,
 .login-form__back-button {

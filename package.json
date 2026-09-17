@@ -7,9 +7,13 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "auth:create-admin": "node scripts/create-admin.mjs",
+    "auth:reset-password": "node scripts/reset-admin-password.mjs"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "argon2": "^0.45.1",
     "date-fns": "^4.4.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useState } from 'react';
+import type { AdminRole } from '../services/authService';
 
 const NAV: { to: string; label: string; icon: string; end?: boolean }[] = [
   { to: '/', label: '監測總覽', icon: '▦', end: true },
@@ -10,13 +11,14 @@ const NAV: { to: string; label: string; icon: string; end?: boolean }[] = [
 ];
 
 interface AppLayoutProps {
-  userEmail: string;
-  onSignOut: () => void;
+  username: string;
+  role: AdminRole;
+  onSignOut: () => Promise<void>;
 }
 
-export function AppLayout({ userEmail, onSignOut }: AppLayoutProps) {
+export function AppLayout({ username, role, onSignOut }: AppLayoutProps) {
   const [open, setOpen] = useState(false);
-  const userInitial = userEmail.slice(0, 1).toUpperCase();
+  const userInitial = username.slice(0, 1).toUpperCase();
 
   return (
     <>
@@ -82,11 +84,11 @@ export function AppLayout({ userEmail, onSignOut }: AppLayoutProps) {
             </div>
             <div className="app-topbar__profile">
               <span className="app-topbar__user-copy">
-                <strong>營運人員</strong>
-                <small>{userEmail}</small>
+                <strong>{role === 'super_admin' ? '系統管理員' : '營運人員'}</strong>
+                <small>{username}</small>
               </span>
               <span className="app-topbar__avatar" aria-hidden>{userInitial}</span>
-              <button type="button" className="app-topbar__signout" onClick={onSignOut}>
+              <button type="button" className="app-topbar__signout" onClick={() => void onSignOut()}>
                 登出
               </button>
             </div>

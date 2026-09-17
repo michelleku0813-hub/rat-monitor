@@ -1,12 +1,14 @@
 # AIoT 智慧鼠患監測系統 — Web Dashboard Prototype
 
-第一版 Frontend Prototype（Mock Data）。**非正式監測資料。**
+第一版監測控制台（監測資料仍為 Mock Data）。**非正式監測資料。**
 
 ## 技術棧
 
 - React + Vite + TypeScript
 - React Router
 - Recharts
+- Vercel Functions（管理員登入 API）
+- Neon PostgreSQL（管理員帳密、Session、登入稽核）
 - Responsive Web Design
 
 ## 資料流
@@ -51,7 +53,7 @@ npm run build
 
 ## 頁面
 
-- **登入頁** — 帳密＋MFA 的兩步驟介面展示（填入展示帳號後可進入系統）
+- **登入頁** — 管理員帳號＋密碼；不提供註冊、Email 驗證或自助密碼重設
 - **監測總覽** — KPI + 營運告警 + **死鼠辨識／通知信模擬** + 即時影像監看 + 最近活動 + 24h / 7 日 / 場域圖表
 - **Activity Analysis** — Heatmap、趨勢、場域／日期篩選
 - **Detection Events** — 事件列表與示意 IR 影像 / 資料驅動 Bounding Box
@@ -80,8 +82,12 @@ npm run build
 
 正式 PostgreSQL 規劃見 `docs/schema.sql`。
 
-## 本版未實作
+## 管理員登入
 
-真實 Authentication／MFA／權限控管、真實寄信、FastAPI / PostgreSQL、YOLO、IoT 硬體通訊。
+登入已改為 Vercel Functions 與 Neon PostgreSQL 的後端帳密驗證。帳密僅以 Argon2id 雜湊儲存，瀏覽器使用 HttpOnly Session Cookie；沒有公開註冊、Email 驗證或自助重設密碼。
 
-登入與死鼠通知目前僅為前端介面流程，並沒有驗證真實帳密或寄出 Email；正式版應由後端提供 HTTPS、受保護的 Session／Token、MFA、RBAC 與郵件服務整合。
+首次設定與建立唯一管理員帳號，請依 docs/neon-setup.md 操作；資料表定義位於 docs/neon-auth-schema.sql。完成 Neon 與 Vercel 的機密設定前，請不要部署此登入版本。
+
+## 尚未實作
+
+真實寄信、FastAPI / 業務資料 PostgreSQL、YOLO 與 IoT 硬體通訊。死鼠通知目前仍是前端模擬；未來接入真實設備資料與寄信服務時，所有後端 API 都要檢查管理員 Session 與角色。
