@@ -1,23 +1,20 @@
-import {
-  getDashboardSummary,
-  getDailyActivity,
-  getHourlyActivity,
-  getLocationActivity,
-} from '../services/dataService';
+import { Link } from 'react-router-dom';
+import { getDashboardSummary, getDailyActivity, getLocationActivity } from '../services/dataService';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { KpiCard } from '../components/KpiCard';
 import { Panel } from '../components/Panel';
-import { DailyLineChart, HourlyBarChart, LocationBarChart } from '../components/Charts';
+import { DailyLineChart, LocationRankChart } from '../components/Charts';
 import { LiveMonitor } from '../components/LiveMonitor';
 import { OpsAlertBar } from '../components/OpsAlertBar';
-import { RecentEventsStrip } from '../components/RecentEventsStrip';
 import { DeadRatSimulator } from '../components/DeadRatSimulator';
-import { formatPercent, formatTime } from '../utils/format';
+import { MethodologyBar } from '../components/MethodologyBar';
+import { formatChange } from '../utils/format';
+
+const TOP_N = 5;
 
 export function OverviewPage() {
   const summary = useAsyncData(() => getDashboardSummary(), []);
-  const hourly = useAsyncData(() => getHourlyActivity(), []);
-  const daily = useAsyncData(() => getDailyActivity({ days: 7 }), []);
+  const daily = useAsyncData(() => getDailyActivity({ days: 14 }), []);
   const locations = useAsyncData(() => getLocationActivity({ days: 7 }), []);
 
   if (summary.loading || !summary.data) {
@@ -25,8 +22,14 @@ export function OverviewPage() {
   }
 
   const s = summary.data;
-  const changeTone =
-    s.change_percentage > 0 ? 'up' : s.change_percentage < 0 ? 'down' : 'neutral';
+  const rate = s.events_per_100h;
+  const trendArrow = s.trend.direction === 'up' ? '↑' : s.trend.direction === 'down' ? '↓' : '→';
+  const trendWord = s.trend.direction === 'up' ? '上升' : s.trend.direction === 'down' ? '下降' : '持平';
+  const anomaly = s.anomalies.top;
+  const deviceIssues = [
+    s.devices.stale ? `${s.devices.stale} 台失聯` : '',
+    s.devices.camera_issues ? `${s.devices.camera_issues} 台畫面異常` : '',
+  ].filter(Boolean);
 
   return (
     <div>
@@ -35,87 +38,122 @@ export function OverviewPage() {
           城市監測總覽
           <span className="demo-chip">Demo Data</span>
         </h1>
-        <p>
-          集中檢視台北市監測設備、AI 偵測事件與營運健康度。鼠隻活動事件不等於老鼠個體數或族群數。
-        </p>
+        <p>鼠隻活動水位、走向、優先處理場域與設備可信度。活動事件不等於老鼠數量。</p>
       </header>
 
-      <div className="kpi-grid">
+      <div className="kpi-grid kpi-grid--overview">
         <KpiCard
-          label="今日鼠隻活動"
-          value={s.today_events}
-          unit="次事件"
-          hint="今日有效 Detection Event"
+          label="每 100 監測小時活動事件"
+          value={rate.value}
+          unit="次"
+          hint={`近 7 日 · 前 7 日 ${rate.previous}`}
+          info={
+            <>
+              <strong>(獨立活動事件 ÷ 有效監測小時) × 100</strong>
+              <span>
+                近 7 日 {rate.events} 事件 ÷ {rate.monitoring_hours} 小時。可跨場域公平比較；離線或畫面遮蔽的時段不計入分母。
+              </span>
+              <span>相對活動指標，不代表老鼠數量或密度。</span>
+            </>
+          }
         />
         <KpiCard
-          label="較昨日"
-          value={formatPercent(s.change_percentage)}
-          tone={changeTone}
-          hint={`昨日 ${s.yesterday_events} 次事件`}
+          label="近 7 日趨勢"
+          value={`${trendArrow} ${formatChange(s.trend.change_percentage)}`}
+          unit={trendWord}
+          tone={s.trend.direction === 'flat' ? 'neutral' : s.trend.direction}
+          sparkline={s.trend.sparkline}
+          hint={`日均 ${s.trend.last7_daily_avg} 次`}
+          info={
+            <>
+              <strong>近 7×24 小時 vs 前 7×24 小時事件數</strong>
+              <span>
+                前 7 日日均 {s.trend.prev7_daily_avg} 次；變動未達 ±10% 視為持平。小圖為近 14 日的 7 日移動平均。
+              </span>
+            </>
+          }
         />
         <KpiCard
-          label="活動高峰時段"
-          value={s.peak_hour}
-          hint="當日事件數最高時段"
+          label="異常增加警示"
+          value={s.anomalies.open}
+          unit="處"
+          tone={s.anomalies.open > 0 ? 'alert' : 'neutral'}
+          hint={
+            anomaly ? (
+              <Link to={`/analysis?location=${anomaly.location_id}`} className="kpi-card__link">
+                {anomaly.location_name} →
+              </Link>
+            ) : (
+              '各場域均在基線內'
+            )
+          }
+          info={
+            <>
+              <strong>穩健 z 分數 &gt; 3 觸發</strong>
+              <span>今日截至目前的事件數，對照前 28 日同一時間點的中位數與 MAD。</span>
+              {anomaly ? (
+                <span>
+                  {anomaly.location_name}：今日 {anomaly.metric_value} 次、基線 {anomaly.baseline_value}，z = {anomaly.z_score}
+                </span>
+              ) : null}
+            </>
+          }
         />
         <KpiCard
-          label="最高活動場域"
-          value={s.highest_activity_location}
-          hint="近 7 日事件數（Prototype）"
-        />
-        <KpiCard
-          label="設備在線狀態"
-          value={`${s.online_devices} / ${s.total_devices}`}
-          hint="正常回報設備數"
-        />
-        <KpiCard
-          label="最近一次鼠隻活動"
-          value={formatTime(s.latest_detection)}
-          hint="最近一筆 Detection Event"
+          label="設備有效監測率"
+          value={s.devices.effective_rate}
+          unit="%"
+          tone={s.devices.effective_rate < 80 ? 'alert' : 'neutral'}
+          hint={
+            deviceIssues.length ? (
+              <Link to="/devices" className="kpi-card__link">
+                {deviceIssues.join(' · ')} →
+              </Link>
+            ) : (
+              `${s.devices.total} 台皆正常`
+            )
+          }
+          info={
+            <>
+              <strong>在線、有心跳、且畫面正常的設備比例</strong>
+              <span>「在線」不等於「看得見」：鏡頭遮蔽或起霧時資料有缺口。先修設備，再信數據。</span>
+            </>
+          }
         />
       </div>
 
-      <OpsAlertBar />
-
-      <DeadRatSimulator />
-
-      <div className="overview-stack">
-        <LiveMonitor />
-        <RecentEventsStrip />
-      </div>
+      <OpsAlertBar actionableOnly />
 
       <div className="chart-grid">
-        <Panel
-          title="24 小時鼠隻活動分布"
-          subtitle="回答：每天什麼時間最常偵測到鼠隻活動？"
-        >
-          {hourly.data ? <HourlyBarChart data={hourly.data} /> : <div className="loading">…</div>}
-          <p className="note">Y 軸為 Detection Events（事件數），非老鼠個體數。</p>
-        </Panel>
-
-        <Panel
-          title="最近 7 日鼠隻活動趨勢"
-          subtitle="觀察鼠隻活動是否增加或降低"
-        >
+        <Panel title="近 14 日活動趨勢" subtitle="每日活動事件與 7 日移動平均">
           {daily.data ? <DailyLineChart data={daily.data} /> : <div className="loading">…</div>}
         </Panel>
-      </div>
 
-      <div className="chart-grid chart-grid--full">
         <Panel
-          title="場域活動比較"
-          subtitle="Prototype 使用原始事件數；正式版建議 Events / 100 Monitoring Hours"
+          title={`場域風險排名 Top ${TOP_N}`}
+          subtitle="近 7 日每 100 監測小時事件數"
+          action={
+            <Link to="/locations" className="panel-link">
+              分級依據
+            </Link>
+          }
         >
           {locations.data ? (
-            <LocationBarChart data={locations.data} />
+            <LocationRankChart data={locations.data.slice(0, TOP_N)} />
           ) : (
             <div className="loading">…</div>
           )}
-          <p className="note">
-            正式版應優先採標準化指標，避免因監測時數不同造成比較偏差。
-          </p>
         </Panel>
       </div>
+
+      <h2 className="section-heading">現場即時</h2>
+      <div className="overview-stack">
+        <LiveMonitor />
+      </div>
+
+      <DeadRatSimulator />
+
+      <MethodologyBar />
     </div>
   );
 }

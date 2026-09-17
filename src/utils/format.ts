@@ -2,6 +2,23 @@
 
 const TZ = 'Asia/Taipei';
 
+/** ISO string with explicit +08:00 offset, independent of the browser timezone. */
+export function toTaipeiIso(date: Date): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '00';
+  const hour = get('hour') === '24' ? '00' : get('hour');
+  return `${get('year')}-${get('month')}-${get('day')}T${hour}:${get('minute')}:${get('second')}+08:00`;
+}
+
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—';
   return new Intl.DateTimeFormat('zh-TW', {
@@ -70,10 +87,9 @@ export function locationTypeLabel(type: string): string {
 
 export function reviewStatusLabel(status: string): string {
   const map: Record<string, string> = {
-    pending: '待審核',
-    confirmed: '已確認',
-    reviewed: '已檢視',
-    false_positive: '誤報',
+    pending: '待人工複核',
+    confirmed: '人工確認',
+    false_positive: '人工判定誤報',
   };
   return map[status] ?? status;
 }
@@ -88,3 +104,40 @@ export function deviceStatusLabel(status: string): string {
 }
 
 export const WEEKDAY_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
+
+export function formatChange(value: number | null): string {
+  return value === null ? '—' : formatPercent(value);
+}
+
+export function formatDuration(sec: number | null | undefined): string {
+  if (sec === null || sec === undefined) return '—';
+  if (sec < 60) return `${sec} 秒`;
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return s ? `${m} 分 ${s} 秒` : `${m} 分`;
+}
+
+/** "3 小時前" style age relative to a reference time. */
+export function formatAgo(iso: string | null | undefined, now: Date): string {
+  if (!iso) return '—';
+  const min = Math.max(0, Math.floor((now.getTime() - new Date(iso).getTime()) / 60000));
+  if (min < 1) return '剛剛';
+  if (min < 60) return `${min} 分鐘前`;
+  if (min < 1440) return `${Math.floor(min / 60)} 小時前`;
+  return `${Math.floor(min / 1440)} 天前`;
+}
+
+export function riskLevelLabel(level: string): string {
+  const map: Record<string, string> = { low: '低', medium: '中', high: '高' };
+  return map[level] ?? level;
+}
+
+export function cameraHealthLabel(health: string): string {
+  const map: Record<string, string> = {
+    normal: '畫面正常',
+    occluded: '鏡頭遮蔽',
+    blurred: '畫面模糊',
+    foggy: '鏡頭起霧',
+  };
+  return map[health] ?? health;
+}

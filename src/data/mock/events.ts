@@ -1,5 +1,11 @@
 import type { DetectionEvent, ReviewStatus } from '../../types';
+import { toTaipeiIso } from '../../utils/format';
 import { DEMO_NOW } from './devices';
+import { MOCK_HISTORY_DAYS, isInCoverageGap, taipeiMidnight } from './sessions';
+
+/** De-duplication silence interval T (seconds). Product default per the metrics study. */
+export const INDEPENDENCE_INTERVAL_SEC = 180;
+export const MODEL_VERSION = 'yolo-tiny-v0.1';
 
 /**
  * Deterministic PRNG so mock data is stable across reloads.
@@ -34,118 +40,137 @@ function hourWeight(hour: number): number {
   return 0.45;
 }
 
-const LOCATION_DEVICES: { location_id: string; device_id: string; weight: number }[] = [
-  { location_id: 'LOC-001', device_id: 'RAT-TPE-001', weight: 5 },
-  { location_id: 'LOC-002', device_id: 'RAT-TPE-002', weight: 3.2 },
-  { location_id: 'LOC-003', device_id: 'RAT-TPE-003', weight: 1.5 },
+const HOURS = Array.from({ length: 24 }, (_, h) => h);
+const HOUR_WEIGHTS = HOURS.map(hourWeight);
+
+interface LocationProfile {
+  location_id: string;
+  device_id: string;
+  /** Expected independent events per full day. */
+  base: number;
+  /** Scenario multiplier by days-ago and Taipei weekday (0 = Sun). */
+  multiplier: (daysAgo: number, weekday: number) => number;
+}
+
+const PROFILES: LocationProfile[] = [
+  {
+    // Market A: baiting 10 days ago → activity drops.
+    location_id: 'LOC-001',
+    device_id: 'RAT-TPE-001',
+    base: 9,
+    multiplier: (daysAgo) => (daysAgo < 10 ? 0.55 : 1),
+  },
+  {
+    // Night market B: busier Fri/Sat, rising this week, spike today.
+    location_id: 'LOC-002',
+    device_id: 'RAT-TPE-002',
+    base: 5,
+    multiplier: (daysAgo, weekday) => {
+      const weekend = weekday === 5 || weekday === 6 ? 1.25 : 1;
+      if (daysAgo === 0) return 3.2;
+      return (daysAgo < 7 ? 1.35 : 1) * weekend;
+    },
+  },
+  {
+    location_id: 'LOC-003',
+    device_id: 'RAT-TPE-003',
+    base: 2.5,
+    multiplier: () => 1,
+  },
 ];
 
-const REVIEW_STATUSES: ReviewStatus[] = ['pending', 'confirmed', 'reviewed', 'false_positive'];
-const REVIEW_WEIGHTS = [0.45, 0.3, 0.18, 0.07];
+const REVIEWERS = ['ops-reviewer-01', 'ops-reviewer-02'];
 
-function formatTaipei(date: Date): string {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Taipei',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  }).formatToParts(date);
+function reviewStatusFor(daysAgo: number, confidence: number): ReviewStatus {
+  const pendingWeight = daysAgo <= 2 ? 0.7 : daysAgo <= 7 ? 0.35 : 0.1;
+  if (rand() < pendingWeight / (pendingWeight + 1)) return 'pending';
+  if (confidence < 0.66 && rand() < 0.45) return 'false_positive';
+  return rand() < 0.95 ? 'confirmed' : 'false_positive';
+}
 
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '00';
-  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}+08:00`;
+function sampleDurationSec(): number {
+  const r = rand();
+  if (r < 0.55) return 3 + Math.round(rand() * 27); // passing through
+  if (r < 0.85) return 30 + Math.round(rand() * 90);
+  return 120 + Math.round(rand() * 480); // lingering / foraging
 }
 
 function buildEvents(): DetectionEvent[] {
   const events: DetectionEvent[] = [];
-  const end = new Date(DEMO_NOW);
-  end.setHours(17, 55, 0, 0);
-
-  // ~7 days of activity; target >= 100 events with night peak & location skew
-  const dayMultipliers = [0.85, 1.05, 0.95, 1.15, 0.9, 1.2, 1.0]; // slight daily variation
-
+  const now = DEMO_NOW.getTime();
   let seq = 1;
+  let track = 1;
 
-  for (let dayOffset = 6; dayOffset >= 0; dayOffset--) {
-    const dayBase = new Date(end);
-    dayBase.setDate(dayBase.getDate() - dayOffset);
-    dayBase.setHours(0, 0, 0, 0);
+  const makeEvent = (
+    profile: LocationProfile,
+    start: number,
+    daysAgo: number,
+    isIndependent: boolean,
+    trackingId: string,
+  ): DetectionEvent | null => {
+    const duration = sampleDurationSec();
+    const end = start + duration * 1000;
+    if (end > now || isInCoverageGap(profile.device_id, start)) return null;
 
-    const dayMult = dayMultipliers[6 - dayOffset];
-    // Base events per day ~16–22 before hour/location filtering via sampling
-    const targetForDay = Math.round(18 * dayMult + (rand() - 0.5) * 4);
-
-    for (let i = 0; i < targetForDay; i++) {
-      // Sample hour by weight
-      const hours = Array.from({ length: 24 }, (_, h) => h);
-      const weights = hours.map(hourWeight);
-      const hour = pickWeighted(hours, weights);
-
-      // Skip future hours for "today"
-      if (dayOffset === 0 && hour > end.getHours()) continue;
-
-      const minute = Math.floor(rand() * 60);
-      const second = Math.floor(rand() * 60);
-      const captured = new Date(dayBase);
-      captured.setHours(hour, minute, second, 0);
-
-      const loc = pickWeighted(
-        LOCATION_DEVICES,
-        LOCATION_DEVICES.map((l) => l.weight),
-      );
-
-      const confidence = Math.round((0.72 + rand() * 0.26) * 100) / 100;
-      const detectedCount = rand() < 0.82 ? 1 : rand() < 0.7 ? 2 : 3;
-      const imgIdx = (seq % 3) + 1;
-      const dateStr = formatTaipei(captured).slice(0, 10).replace(/-/g, '');
-
-      events.push({
-        event_id: `EVT-${dateStr}-${String(seq).padStart(3, '0')}`,
-        device_id: loc.device_id,
-        location_id: loc.location_id,
-        captured_at: formatTaipei(captured),
-        rat_detected: true,
-        detected_count: detectedCount,
-        confidence,
-        image_url: `/mock/rat-00${imgIdx}.svg`,
-        model_version: 'yolo-tiny-v0.1',
-        review_status: pickWeighted(REVIEW_STATUSES, REVIEW_WEIGHTS),
-      });
-      seq += 1;
-    }
-  }
-
-  // Ensure we have at least 100 events
-  while (events.length < 100) {
-    const dayOffset = Math.floor(rand() * 7);
-    const dayBase = new Date(end);
-    dayBase.setDate(dayBase.getDate() - dayOffset);
-    const hour = pickWeighted(
-      Array.from({ length: 24 }, (_, h) => h),
-      Array.from({ length: 24 }, (_, h) => hourWeight(h)),
-    );
-    dayBase.setHours(hour, Math.floor(rand() * 60), Math.floor(rand() * 60), 0);
-    const loc = pickWeighted(
-      LOCATION_DEVICES,
-      LOCATION_DEVICES.map((l) => l.weight),
-    );
-    const dateStr = formatTaipei(dayBase).slice(0, 10).replace(/-/g, '');
-    events.push({
-      event_id: `EVT-${dateStr}-${String(seq).padStart(3, '0')}`,
-      device_id: loc.device_id,
-      location_id: loc.location_id,
-      captured_at: formatTaipei(dayBase),
+    const confidence = Math.round((0.55 + rand() * 0.43) * 100) / 100;
+    const startIso = toTaipeiIso(new Date(start));
+    const reviewStatus = reviewStatusFor(daysAgo, confidence);
+    const reviewedAt =
+      reviewStatus === 'pending' ? null : Math.min(end + (2 + rand() * 18) * 3600_000, now);
+    const event: DetectionEvent = {
+      event_id: `EVT-${startIso.slice(0, 10).replace(/-/g, '')}-${String(seq).padStart(4, '0')}`,
+      device_id: profile.device_id,
+      location_id: profile.location_id,
+      captured_at: startIso,
+      event_start: startIso,
+      event_end: toTaipeiIso(new Date(end)),
+      duration_sec: duration,
+      tracking_id: trackingId,
       rat_detected: true,
-      detected_count: 1,
-      confidence: 0.88,
-      image_url: `/mock/rat-001.svg`,
-      model_version: 'yolo-tiny-v0.1',
-      review_status: 'pending',
-    });
+      is_independent: isIndependent,
+      independence_interval_sec: INDEPENDENCE_INTERVAL_SEC,
+      max_simultaneous_count: rand() < 0.82 ? 1 : rand() < 0.7 ? 2 : 3,
+      mean_confidence: confidence,
+      image_url: `/mock/rat-00${(seq % 3) + 1}.svg`,
+      model_version: MODEL_VERSION,
+      review_status: reviewStatus,
+      reviewed_by: reviewedAt === null ? null : REVIEWERS[Math.floor(rand() * REVIEWERS.length)],
+      reviewed_at: reviewedAt === null ? null : toTaipeiIso(new Date(reviewedAt)),
+    };
     seq += 1;
+    return event;
+  };
+
+  for (let daysAgo = MOCK_HISTORY_DAYS - 1; daysAgo >= 0; daysAgo--) {
+    const midnight = taipeiMidnight(daysAgo);
+    const weekday = new Date(midnight + 12 * 60 * 60 * 1000).getUTCDay();
+
+    for (const profile of PROFILES) {
+      const expected = profile.base * profile.multiplier(daysAgo, weekday);
+      const count = Math.max(0, Math.round(expected * (0.75 + rand() * 0.5)));
+
+      for (let i = 0; i < count; i++) {
+        const hour = pickWeighted(HOURS, HOUR_WEIGHTS);
+        const start = midnight + hour * 3600_000 + Math.floor(rand() * 3600) * 1000;
+        const trackingId = `TRK-${profile.device_id.slice(-3)}-${String(track++).padStart(5, '0')}`;
+        const event = makeEvent(profile, start, daysAgo, true, trackingId);
+        if (!event) continue;
+        events.push(event);
+
+        // Same track re-entering within T: recorded, but merged (not independent).
+        if (rand() < 0.07) {
+          const gapSec = 20 + Math.floor(rand() * (INDEPENDENCE_INTERVAL_SEC - 30));
+          const reentry = makeEvent(
+            profile,
+            new Date(event.event_end).getTime() + gapSec * 1000,
+            daysAgo,
+            false,
+            trackingId,
+          );
+          if (reentry) events.push(reentry);
+        }
+      }
+    }
   }
 
   return events.sort(

@@ -1,7 +1,7 @@
 import type { BoundingBox, CameraSnapshot } from '../types';
 import { getCameraSnapshots, getLocationName } from '../services/dataService';
 import { DEMO_NOW } from '../data/mock/devices';
-import { deviceStatusLabel, formatFrameAge } from '../utils/format';
+import { cameraHealthLabel, deviceStatusLabel, formatFrameAge } from '../utils/format';
 import { usePolling } from '../hooks/usePolling';
 import { Panel } from './Panel';
 
@@ -41,7 +41,13 @@ function CameraTile({ snap }: { snap: CameraSnapshot }) {
         ) : null}
         {muted ? (
           <div className="camera-tile__mask">
-            <span>{snap.stream_status === 'offline' ? 'Stream Offline' : 'Degraded'}</span>
+            <span>
+              {snap.stream_status === 'offline'
+                ? 'Stream Offline'
+                : snap.camera_health !== 'normal'
+                  ? `${cameraHealthLabel(snap.camera_health)} · 不計入監測`
+                  : 'Degraded'}
+            </span>
           </div>
         ) : null}
         <div className="camera-tile__hud">

@@ -27,9 +27,18 @@ export interface TaipeiMapDevice {
   signal_strength?: number;
 }
 
+export type TaipeiRiskLevel = 'low' | 'medium' | 'high';
+
+export interface TaipeiLocationMetric {
+  risk_level: TaipeiRiskLevel;
+  events_per_100_hours: number;
+}
+
 export interface TaipeiDeviceMapProps {
   locations: readonly TaipeiMapLocation[];
   devices: readonly TaipeiMapDevice[];
+  /** When provided, marker color = risk level and marker size = Events / 100h. */
+  metrics?: Readonly<Record<string, TaipeiLocationMetric>>;
   /** Makes selection controlled when provided. */
   selectedLocationId?: string | null;
   onLocationSelect?: (location: TaipeiMapLocation) => void;
@@ -48,6 +57,14 @@ interface LocationSummary {
   status: TaipeiDeviceStatus;
   point: MarkerPoint;
 }
+
+const RISK_COLORS: Record<TaipeiRiskLevel, string> = {
+  low: '#5b9f93',
+  medium: '#d99a00',
+  high: '#c73e35',
+};
+
+const RISK_LABELS: Record<TaipeiRiskLevel, string> = { low: '低風險', medium: '中風險', high: '高風險' };
 
 const TAIPEI_BOUNDS = {
   minLatitude: 24.96,
@@ -135,6 +152,7 @@ function formatBattery(battery: number | undefined): string {
 export function TaipeiDeviceMap({
   locations,
   devices,
+  metrics,
   selectedLocationId,
   onLocationSelect,
   className,
@@ -176,6 +194,8 @@ export function TaipeiDeviceMap({
     });
   }, [devices, locations]);
 
+  const maxRate = Math.max(1, ...Object.values(metrics ?? {}).map((m) => m.events_per_100_hours));
+
   const selectedSummary = summaries.find(
     (summary) => summary.location.location_id === activeLocationId,
   );
@@ -197,7 +217,9 @@ export function TaipeiDeviceMap({
             {title}
           </h2>
           <p className="taipei-device-map__subtitle">
-            點選標記查看所在場域的機台與連線狀態。
+            {metrics
+              ? '顏色為風險等級、大小為近 7 日每 100 監測小時事件數；點選標記查看設備狀態。'
+              : '點選標記查看所在場域的機台與連線狀態。'}
           </p>
         </div>
         <div className="taipei-device-map__count" aria-label={`${locations.length} 個監測場域`}>
@@ -281,7 +303,11 @@ export function TaipeiDeviceMap({
           <g className="taipei-device-map__markers">
             {summaries.map((summary) => {
               const isSelected = summary.location.location_id === activeLocationId;
-              const markerLabel = `${summary.location.name}，${summary.devices.length} 台設備，${statusLabel(summary.status)}`;
+              const metric = metrics?.[summary.location.location_id];
+              const dotRadius = metric ? 5 + (metric.events_per_100_hours / maxRate) * 5 : 8;
+              const markerLabel = metric
+                ? `${summary.location.name}，${RISK_LABELS[metric.risk_level]}，每 100 監測小時 ${metric.events_per_100_hours} 次，設備${statusLabel(summary.status)}`
+                : `${summary.location.name}，${summary.devices.length} 台設備，${statusLabel(summary.status)}`;
               return (
                 <g
                   key={summary.location.location_id}
@@ -305,7 +331,7 @@ export function TaipeiDeviceMap({
                   {isSelected ? <circle r="22" fill="#0b4f6c" opacity="0.16" /> : null}
                   <circle
                     className="taipei-device-map__marker-ring"
-                    r="13"
+                    r={dotRadius + 5}
                     fill="#ffffff"
                     stroke="#102433"
                     strokeWidth="2"
@@ -313,15 +339,25 @@ export function TaipeiDeviceMap({
                   />
                   <circle
                     className="taipei-device-map__marker-dot"
-                    r="8"
+                    r={dotRadius}
                     fill={
-                      summary.status === 'online'
-                        ? '#12b76a'
-                        : summary.status === 'warning'
-                          ? '#f79009'
-                          : '#f04438'
+                      metric
+                        ? RISK_COLORS[metric.risk_level]
+                        : summary.status === 'online'
+                          ? '#12b76a'
+                          : summary.status === 'warning'
+                            ? '#f79009'
+                            : '#f04438'
                     }
                   />
+                  {metric && summary.status !== 'online' ? (
+                    <g transform={`translate(${dotRadius + 3} ${-(dotRadius + 3)})`}>
+                      <circle r="7" fill="#102433" stroke="#ffffff" strokeWidth="1.5" />
+                      <text x="0" y="3.5" textAnchor="middle" fill="#ffffff" fontSize="10" fontWeight="700">
+                        !
+                      </text>
+                    </g>
+                  ) : null}
                   <text
                     className="taipei-device-map__marker-count"
                     x="0"
@@ -336,7 +372,7 @@ export function TaipeiDeviceMap({
                   <text
                     className="taipei-device-map__marker-label"
                     x="0"
-                    y="31"
+                    y={dotRadius + 23}
                     textAnchor="middle"
                     fill="#102433"
                     fontSize="12"
@@ -364,14 +400,34 @@ export function TaipeiDeviceMap({
         </svg>
       </div>
 
-      <div className="taipei-device-map__legend" aria-label="設備狀態圖例">
-        {(['online', 'warning', 'offline'] as const).map((status) => (
-          <span key={status} className={`taipei-device-map__legend-item taipei-device-map__legend-item--${status}`}>
-            <span className="taipei-device-map__legend-dot" aria-hidden />
-            {statusLabel(status)}
+      {metrics ? (
+        <div className="taipei-device-map__legend" aria-label="風險等級圖例">
+          {(['low', 'medium', 'high'] as const).map((level) => (
+            <span key={level} className="taipei-device-map__legend-item">
+              <span
+                className="taipei-device-map__legend-dot"
+                style={{ background: RISK_COLORS[level] }}
+                aria-hidden
+              />
+              {RISK_LABELS[level]}
+            </span>
+          ))}
+          <span className="taipei-device-map__legend-item">
+            <span className="taipei-device-map__legend-alert" aria-hidden>!</span>
+            設備需留意／離線
           </span>
-        ))}
-      </div>
+          <span className="taipei-device-map__legend-item">標記越大＝每 100 監測小時事件越多</span>
+        </div>
+      ) : (
+        <div className="taipei-device-map__legend" aria-label="設備狀態圖例">
+          {(['online', 'warning', 'offline'] as const).map((status) => (
+            <span key={status} className={`taipei-device-map__legend-item taipei-device-map__legend-item--${status}`}>
+              <span className="taipei-device-map__legend-dot" aria-hidden />
+              {statusLabel(status)}
+            </span>
+          ))}
+        </div>
+      )}
 
       <div className="taipei-device-map__selection" aria-live="polite">
         {selectedSummary ? (

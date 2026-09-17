@@ -16,8 +16,8 @@ function cellColor(value: number, max: number): string {
 }
 
 export function ActivityHeatmap({ data }: HeatmapProps) {
-  const max = Math.max(...data.map((c) => c.events), 0);
-  const lookup = new Map(data.map((c) => [`${c.weekday}-${c.hour}`, c.events]));
+  const max = Math.max(...data.map((c) => c.avg_events), 0);
+  const lookup = new Map(data.map((c) => [`${c.weekday}-${c.hour}`, c]));
 
   return (
     <div className="heatmap">
@@ -35,13 +35,17 @@ export function ActivityHeatmap({ data }: HeatmapProps) {
             <tr key={weekday}>
               <td className="row-label">週{label}</td>
               {Array.from({ length: 24 }, (_, hour) => {
-                const events = lookup.get(`${weekday}-${hour}`) ?? 0;
+                const cell = lookup.get(`${weekday}-${hour}`);
+                const avg = cell?.avg_events ?? 0;
+                const samples = cell?.samples ?? 0;
+                // Fewer than 2 occurrences of this weekday: an average is not meaningful.
+                const sparse = samples < 2;
                 return (
                   <td key={hour}>
                     <div
-                      className="heatmap-cell"
-                      style={{ background: cellColor(events, max) }}
-                      title={`週${label} ${String(hour).padStart(2, '0')}:00 — ${events} 事件`}
+                      className={`heatmap-cell${sparse ? ' heatmap-cell--sparse' : ''}`}
+                      style={{ background: cellColor(avg, max) }}
+                      title={`週${label} ${String(hour).padStart(2, '0')}:00 — 平均 ${avg} 次（${cell?.events ?? 0} 次 ÷ ${samples} 個週${label}）${sparse ? '・樣本不足' : ''}`}
                     />
                   </td>
                 );
@@ -59,7 +63,10 @@ export function ActivityHeatmap({ data }: HeatmapProps) {
           <span style={{ background: '#3a9a8c' }} />
           <span style={{ background: '#1b7a6e' }} />
         </div>
-        <span>高（Detection Event Count）</span>
+        <span>高（平均活動事件數／次）</span>
+        <span className="heatmap-legend__sparse">
+          <i aria-hidden /> 斜線＝樣本不足（該星期少於 2 次）
+        </span>
       </div>
     </div>
   );

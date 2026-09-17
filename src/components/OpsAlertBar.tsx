@@ -1,16 +1,24 @@
 import { Link } from 'react-router-dom';
-import type { OpsAlert } from '../types';
+import type { OpsAlert, OpsAlertKind } from '../types';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { getOpsAlerts } from '../services/dataService';
 
-export function OpsAlertBar() {
+const KIND_LABEL: Record<OpsAlertKind, string> = {
+  spike: '活動突增',
+  device_offline: '設備失聯',
+  tamper: '畫面異常',
+  review: '資料品質',
+};
+
+/** `actionableOnly` hides informational items (e.g. review backlog) for a calmer overview. */
+export function OpsAlertBar({ actionableOnly = false }: { actionableOnly?: boolean }) {
   const { data, loading } = useAsyncData(() => getOpsAlerts(), []);
 
   if (loading && !data) {
     return <div className="ops-alerts ops-alerts--loading">載入告警…</div>;
   }
 
-  const alerts = data ?? [];
+  const alerts = (data ?? []).filter((a) => !actionableOnly || a.severity !== 'info');
   if (alerts.length === 0) {
     return (
       <div className="ops-alerts ops-alerts--ok" role="status">
@@ -29,7 +37,7 @@ export function OpsAlertBar() {
           className={`ops-alert ops-alert--${alert.severity}`}
           role="listitem"
         >
-          <span className="ops-alert__sev">{alert.severity}</span>
+          <span className="ops-alert__sev">{KIND_LABEL[alert.kind]}</span>
           <span className="ops-alert__body">
             <strong>{alert.title}</strong>
             <span>{alert.detail}</span>

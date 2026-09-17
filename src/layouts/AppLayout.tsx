@@ -1,12 +1,13 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useState } from 'react';
 import type { AdminRole } from '../services/authService';
+import type { AppUserContext } from '../hooks/useAppUser';
 
 const NAV: { to: string; label: string; icon: string; end?: boolean }[] = [
   { to: '/', label: '監測總覽', icon: '▦', end: true },
   { to: '/analysis', label: '活動分析', icon: '⌁' },
   { to: '/events', label: '偵測事件', icon: '◉' },
-  { to: '/locations', label: '台北機台地圖', icon: '⌖' },
+  { to: '/locations', label: '場域熱點', icon: '⌖' },
   { to: '/devices', label: '設備健康', icon: '▤' },
 ];
 
@@ -93,7 +94,7 @@ export function AppLayout({ username, role, onSignOut }: AppLayoutProps) {
               </button>
             </div>
           </header>
-          <Outlet />
+          <Outlet context={{ username, role } satisfies AppUserContext} />
         </main>
       </div>
     </>

@@ -1,9 +1,9 @@
 import type { BoundingBox } from '../../types';
 
-/** Deterministic mock boxes from an event id + detected count. */
+/** Deterministic mock boxes from an event id + max simultaneous count. */
 export function boxesForEvent(
   eventId: string,
-  detectedCount: number,
+  maxSimultaneous: number,
   confidence: number,
 ): BoundingBox[] {
   let hash = 0;
@@ -12,7 +12,7 @@ export function boxesForEvent(
   }
 
   const boxes: BoundingBox[] = [];
-  const count = Math.max(1, Math.min(detectedCount, 3));
+  const count = Math.max(1, Math.min(maxSimultaneous, 3));
 
   for (let i = 0; i < count; i++) {
     const seed = (hash + i * 9973) % 1000;
