@@ -1,4 +1,4 @@
-import type { MapLocation, MarketFloorPlan } from '../types/map';
+import type { MapLocation, MarketFloorPlan } from '../types/map.js';
 
 /** Snapshot fetched on 2026-10-13. Reference pins are not surveyed device positions.
  * See docs/map-sources.md for source licenses, transformations, and corrected stale pins.

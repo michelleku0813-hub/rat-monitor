@@ -233,7 +233,7 @@ export function isAuthorizedSensor(request: Request, deviceId: string, configure
   } catch {
     throw new Error('Sensor token configuration invalid');
   }
-  const expected = Object.hasOwn(config, deviceId) ? config[deviceId] : undefined;
+  const expected = Object.prototype.hasOwnProperty.call(config, deviceId) ? config[deviceId] : undefined;
   const token = /^Bearer ([A-Za-z0-9_-]{32,256})$/.exec(request.headers.get('authorization') ?? '')?.[1];
   if (typeof expected !== 'string' || !/^[A-Za-z0-9_-]{32,256}$/.test(expected) || !token) return false;
   const digest = (value: string) => createHash('sha256').update(value).digest();
