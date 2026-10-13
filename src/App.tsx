@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from './layouts/AppLayout';
 import { OverviewPage } from './pages/OverviewPage';
 import { ActivityAnalysisPage } from './pages/ActivityAnalysisPage';
 import { DetectionEventsPage } from './pages/DetectionEventsPage';
-import { LocationsPage } from './pages/LocationsPage';
 import { DevicesPage } from './pages/DevicesPage';
 import { LoginPage } from './pages/LoginPage';
 import {
@@ -13,6 +12,8 @@ import {
   signOut as endSession,
   type AuthenticatedUser,
 } from './services/authService';
+
+const LocationsPage = lazy(() => import('./pages/LocationsPage').then((page) => ({ default: page.LocationsPage })));
 
 export default function App() {
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
@@ -97,7 +98,7 @@ export default function App() {
           <Route index element={<OverviewPage />} />
           <Route path="analysis" element={<ActivityAnalysisPage />} />
           <Route path="events" element={<DetectionEventsPage />} />
-          <Route path="locations" element={<LocationsPage />} />
+          <Route path="locations" element={<Suspense fallback={<div className="loading">載入地圖…</div>}><LocationsPage /></Suspense>} />
           <Route path="devices" element={<DevicesPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

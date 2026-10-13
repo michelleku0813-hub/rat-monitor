@@ -1,0 +1,782 @@
+import type { MapLocation, MarketFloorPlan } from '../types/map';
+
+/** Snapshot fetched on 2026-10-13. Reference pins are not surveyed device positions.
+ * See docs/map-sources.md for source licenses, transformations, and corrected stale pins.
+ */
+export const MAP_CATALOG_FETCHED_AT = '2026-10-13';
+
+export const MAP_CATALOG: MapLocation[] = [
+  {
+    "location_id": "TPE-MARKET-001",
+    "name": "臺北市公有大龍市場",
+    "type": "market",
+    "address": "重慶北路三段347號",
+    "district": "大同區",
+    "latitude": 25.075139,
+    "longitude": 121.514306,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-002",
+    "name": "臺北市公有北投市場",
+    "type": "market",
+    "address": "臺北市北投區新市街30號",
+    "district": "北投區",
+    "latitude": 25.132806,
+    "longitude": 121.502556,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-003",
+    "name": "臺北市公有長春市場",
+    "type": "market",
+    "address": "臺北市中山區長春路299號",
+    "district": "中山區",
+    "latitude": 25.054722,
+    "longitude": 121.542611,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-004",
+    "name": "臺北市公有建國市場",
+    "type": "market",
+    "address": "臺北市中山區伊通街94巷4號",
+    "district": "中山區",
+    "latitude": 25.053667,
+    "longitude": 121.535306,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-005",
+    "name": "臺北市公有中山市場",
+    "type": "market",
+    "address": "臺北市中山區長安西路3號",
+    "district": "中山區",
+    "latitude": 25.050139,
+    "longitude": 121.521111,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-006",
+    "name": "臺北市公有興隆市場",
+    "type": "market",
+    "address": "臺北市文山區興隆路二段97號",
+    "district": "文山區",
+    "latitude": 24.999944,
+    "longitude": 121.547278,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-007",
+    "name": "臺北市公有木柵市場",
+    "type": "market",
+    "address": "臺北市文山區保儀路13巷3號",
+    "district": "文山區",
+    "latitude": 24.988667,
+    "longitude": 121.569139,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-008",
+    "name": "臺北市公有河濱二商場",
+    "type": "market",
+    "address": "臺北市萬華區環河南路一段328號(286至340號)",
+    "district": "萬華區",
+    "latitude": 25.040861,
+    "longitude": 121.498722,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-009",
+    "name": "臺北市公有環南市場",
+    "type": "market",
+    "address": "臺北市萬華區環河南路二段245號",
+    "district": "萬華區",
+    "latitude": 25.029361,
+    "longitude": 121.490528,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-010",
+    "name": "臺北市公有永吉市場",
+    "type": "market",
+    "address": "臺北市信義區永吉路278巷1弄30號",
+    "district": "信義區",
+    "latitude": 25.044861,
+    "longitude": 121.575306,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-011",
+    "name": "臺北市公有光復市場",
+    "type": "market",
+    "address": "臺北市信義區仁愛路四段496巷19號",
+    "district": "信義區",
+    "latitude": 25.0365,
+    "longitude": 121.560472,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-012",
+    "name": "臺北市公有永春市場",
+    "type": "market",
+    "address": "臺北市信義區松山路294號",
+    "district": "信義區",
+    "latitude": 25.04325,
+    "longitude": 121.577556,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-013",
+    "name": "臺北市公有松山市場",
+    "type": "market",
+    "address": "臺北市松山區八德路四段679號",
+    "district": "松山區",
+    "latitude": 25.050361,
+    "longitude": 121.575917,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-014",
+    "name": "臺北市公有龍城市場",
+    "type": "market",
+    "address": "臺北市松山區光復北路190巷39號",
+    "district": "松山區",
+    "latitude": 25.054611,
+    "longitude": 121.553806,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-015",
+    "name": "臺北市公有南松市場",
+    "type": "market",
+    "address": "臺北市松山區塔悠路40號",
+    "district": "松山區",
+    "latitude": 25.050917,
+    "longitude": 121.570639,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-016",
+    "name": "臺北市公有中崙市場",
+    "type": "market",
+    "address": "臺北市松山區八德路三段76號",
+    "district": "松山區",
+    "latitude": 25.048,
+    "longitude": 121.552694,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-017",
+    "name": "臺北市公有西湖市場",
+    "type": "market",
+    "address": "臺北市內湖區內湖路一段285號1、2樓",
+    "district": "內湖區",
+    "latitude": 25.082389,
+    "longitude": 121.566694,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-018",
+    "name": "臺北市公有成功市場（臨時攤棚）",
+    "type": "market",
+    "address": "臺北市大安區四維路192巷",
+    "district": "大安區",
+    "latitude": 25.026972,
+    "longitude": 121.547333,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-019",
+    "name": "臺北市公有錦安市場",
+    "type": "market",
+    "address": "臺北市大安區永康街60號",
+    "district": "大安區",
+    "latitude": 25.028528,
+    "longitude": 121.529472,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-020",
+    "name": "臺北市公有信義市場",
+    "type": "market",
+    "address": "臺北市大安區信義路三段107號",
+    "district": "大安區",
+    "latitude": 25.034028,
+    "longitude": 121.539083,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-021",
+    "name": "臺北市公有安東市場",
+    "type": "market",
+    "address": "臺北市大安區瑞安街75號",
+    "district": "大安區",
+    "latitude": 25.028222,
+    "longitude": 121.541167,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-022",
+    "name": "臺北市公有成德市場",
+    "type": "market",
+    "address": "臺北市南港區同德路100號1樓",
+    "district": "南港區",
+    "latitude": 25.046167,
+    "longitude": 121.586806,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-023",
+    "name": "臺北市公有中研市場",
+    "type": "market",
+    "address": "臺北市南港區研究院路二段70巷12號",
+    "district": "南港區",
+    "latitude": 25.045472,
+    "longitude": 121.614472,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-024",
+    "name": "臺北市公有新生市場",
+    "type": "market",
+    "address": "臺北市中正區新生南路一段134之1號",
+    "district": "中正區",
+    "latitude": 25.03675,
+    "longitude": 121.532417,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-025",
+    "name": "臺北市公有華山市場",
+    "type": "market",
+    "address": "臺北市中正區忠孝東路一段108號",
+    "district": "中正區",
+    "latitude": 25.044194,
+    "longitude": 121.524806,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-026",
+    "name": "臺北市公有南門市場",
+    "type": "market",
+    "address": "臺北市中正區羅斯福路一段8號",
+    "district": "中正區",
+    "latitude": 25.0323362,
+    "longitude": 121.5182324,
+    "coordinate_source": "reference",
+    "source_url": "https://www.openstreetmap.org/node/3201203197"
+  },
+  {
+    "location_id": "TPE-MARKET-027",
+    "name": "光華數位新天地",
+    "type": "other",
+    "address": "臺北市中正區市民大道三段8號",
+    "district": "中正區",
+    "latitude": 25.045278,
+    "longitude": 121.532,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-028",
+    "name": "臺北市公有水源市場",
+    "type": "market",
+    "address": "臺北市中正區羅斯福路四段92號",
+    "district": "中正區",
+    "latitude": 25.01375,
+    "longitude": 121.534972,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-029",
+    "name": "臺北市公有東門市場",
+    "type": "market",
+    "address": "臺北市中正區信義路二段81號",
+    "district": "中正區",
+    "latitude": 25.034639,
+    "longitude": 121.526667,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-030",
+    "name": "臺北市公有幸安市場",
+    "type": "market",
+    "address": "臺北市中正區濟南路二段46號",
+    "district": "中正區",
+    "latitude": 25.040306,
+    "longitude": 121.530917,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-031",
+    "name": "臺北市公有蘭州市場",
+    "type": "market",
+    "address": "臺北市大同區昌吉街55號(55至57號)",
+    "district": "大同區",
+    "latitude": 25.066056,
+    "longitude": 121.515611,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-032",
+    "name": "臺北市公有雙連市場",
+    "type": "market",
+    "address": "臺北市大同區民生西路198號",
+    "district": "大同區",
+    "latitude": 25.056861,
+    "longitude": 121.516861,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-033",
+    "name": "臺北市公有永樂市場",
+    "type": "market",
+    "address": "臺北市大同區迪化街一段21號",
+    "district": "大同區",
+    "latitude": 25.054833,
+    "longitude": 121.510806,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-034",
+    "name": "中山大樓",
+    "type": "other",
+    "address": "臺北市中山區中山北路一段110號之1至之8",
+    "district": "中山區",
+    "latitude": 25.050167,
+    "longitude": 121.521472,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-035",
+    "name": "台北松江路命理街(行天宮旁地下街)",
+    "type": "other",
+    "address": "臺北市中山區民權東路二段(地下人行道)",
+    "district": "中山區",
+    "latitude": 25.062639,
+    "longitude": 121.533278,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-036",
+    "name": "臺北市公有松江市場",
+    "type": "market",
+    "address": "臺北市中山區錦州街222號",
+    "district": "中山區",
+    "latitude": 25.060139,
+    "longitude": 121.532028,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-037",
+    "name": "臺北市公有大直市場",
+    "type": "market",
+    "address": "臺北市中山區北安路458巷41弄3號",
+    "district": "中山區",
+    "latitude": 25.078639,
+    "longitude": 121.545278,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-038",
+    "name": "臺北市公有景美市場",
+    "type": "market",
+    "address": "臺北市文山區景文街137號",
+    "district": "文山區",
+    "latitude": 24.989861,
+    "longitude": 121.541083,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-039",
+    "name": "臺北市公有木新市場",
+    "type": "market",
+    "address": "臺北市文山區木新路三段310巷4號",
+    "district": "文山區",
+    "latitude": 24.981444,
+    "longitude": 121.557222,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-040",
+    "name": "臺北市公有士林市場",
+    "type": "market",
+    "address": "臺北市士林區基河路101號",
+    "district": "士林區",
+    "latitude": 25.088083,
+    "longitude": 121.524194,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-041",
+    "name": "臺北市公有士東市場",
+    "type": "market",
+    "address": "臺北市士林區士東路100號",
+    "district": "士林區",
+    "latitude": 25.111917,
+    "longitude": 121.529528,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-042",
+    "name": "臺北市公有龍山商場",
+    "type": "market",
+    "address": "臺北市萬華區和平西路三段120號 (萬華區行政中心內 )",
+    "district": "萬華區",
+    "latitude": 25.035,
+    "longitude": 121.499889,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-043",
+    "name": "臺北市公有河濱一商場",
+    "type": "market",
+    "address": "臺北市萬華區環河南路一段4號(2至272號)",
+    "district": "萬華區",
+    "latitude": 25.048333,
+    "longitude": 121.505583,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-044",
+    "name": "臺北市公有西寧市場",
+    "type": "market",
+    "address": "臺北市萬華區西寧南路4號",
+    "district": "萬華區",
+    "latitude": 25.048139,
+    "longitude": 121.506889,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-045",
+    "name": "臺北市公有西門商場",
+    "type": "market",
+    "address": "臺北市萬華區成都路10巷33號",
+    "district": "萬華區",
+    "latitude": 25.04175,
+    "longitude": 121.506972,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-046",
+    "name": "臺北市公有直興市場",
+    "type": "market",
+    "address": "臺北市萬華區康定路172巷1號",
+    "district": "萬華區",
+    "latitude": 25.039333,
+    "longitude": 121.50175,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-MARKET-047",
+    "name": "臺北市公有新富市場",
+    "type": "market",
+    "address": "臺北市萬華區三水街70號",
+    "district": "萬華區",
+    "latitude": 25.036028,
+    "longitude": 121.501972,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=89bebb3a-990d-4070-bd67-631a575f6d4a"
+  },
+  {
+    "location_id": "TPE-WHOLESALE-001",
+    "name": "臺北魚市",
+    "type": "market",
+    "address": "臺北市中山區民族東路410巷2弄18號",
+    "district": "中山區",
+    "latitude": 25.0666729,
+    "longitude": 121.537108,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=4a50dd4a-b09c-47c8-9374-fc04a9e59cc9"
+  },
+  {
+    "location_id": "TPE-WHOLESALE-002",
+    "name": "第二果菜批發市場",
+    "type": "market",
+    "address": "臺北市中山區民族東路336號",
+    "district": "中山區",
+    "latitude": 25.068013,
+    "longitude": 121.537226,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=4a50dd4a-b09c-47c8-9374-fc04a9e59cc9"
+  },
+  {
+    "location_id": "TPE-WHOLESALE-003",
+    "name": "臺北花卉批發市場（俗稱台北花市）",
+    "type": "market",
+    "address": "臺北市內湖區新湖三路28號、36號",
+    "district": "內湖區",
+    "latitude": 25.0635747,
+    "longitude": 121.5767457,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=4a50dd4a-b09c-47c8-9374-fc04a9e59cc9"
+  },
+  {
+    "location_id": "TPE-WHOLESALE-004",
+    "name": "臺北市魚類批發市場",
+    "type": "market",
+    "address": "臺北市萬華區萬大路531號",
+    "district": "萬華區",
+    "latitude": 25.018386,
+    "longitude": 121.497545,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=4a50dd4a-b09c-47c8-9374-fc04a9e59cc9"
+  },
+  {
+    "location_id": "TPE-WHOLESALE-005",
+    "name": "第二家禽批發市場",
+    "type": "market",
+    "address": "臺北市文山區興隆路二段99號",
+    "district": "文山區",
+    "latitude": 24.9996789,
+    "longitude": 121.547583,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=4a50dd4a-b09c-47c8-9374-fc04a9e59cc9"
+  },
+  {
+    "location_id": "TPE-WHOLESALE-006",
+    "name": "臺北市家禽批發市場",
+    "type": "market",
+    "address": "臺北市環河南路二段338號",
+    "district": "萬華區",
+    "latitude": 25.0306335,
+    "longitude": 121.4899918,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=4a50dd4a-b09c-47c8-9374-fc04a9e59cc9"
+  },
+  {
+    "location_id": "TPE-WHOLESALE-007",
+    "name": "第一果菜批發市場",
+    "type": "market",
+    "address": "臺北市萬華區萬大路533號",
+    "district": "萬華區",
+    "latitude": 25.0183001,
+    "longitude": 121.4983607,
+    "coordinate_source": "reference",
+    "source_url": "https://www.tapmc.com.tw/Pages/ContactUs"
+  },
+  {
+    "location_id": "TPE-WHOLESALE-008",
+    "name": "第四區肉品批發市場",
+    "type": "market",
+    "address": "臺北市大同區昌吉街59號",
+    "district": "大同區",
+    "latitude": 25.066093,
+    "longitude": 121.5149318,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=4a50dd4a-b09c-47c8-9374-fc04a9e59cc9"
+  },
+  {
+    "location_id": "TPE-NIGHT-002",
+    "name": "廣州街觀光夜市",
+    "type": "night_market",
+    "address": "臺北市萬華區梧州街至環河南路間",
+    "district": "萬華區",
+    "latitude": 25.037,
+    "longitude": 121.4976111,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=c013d9ec-a550-46bd-ac60-45f085930706"
+  },
+  {
+    "location_id": "TPE-NIGHT-004",
+    "name": "梧州街觀光夜市",
+    "type": "night_market",
+    "address": "臺北市萬華區廣州街至桂林路間",
+    "district": "萬華區",
+    "latitude": 25.0365278,
+    "longitude": 121.4975833,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=c013d9ec-a550-46bd-ac60-45f085930706"
+  },
+  {
+    "location_id": "TPE-NIGHT-006",
+    "name": "西昌街觀光夜市",
+    "type": "night_market",
+    "address": "臺北市萬華區廣州街至桂林路間",
+    "district": "萬華區",
+    "latitude": 25.0404167,
+    "longitude": 121.5006944,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=c013d9ec-a550-46bd-ac60-45f085930706"
+  },
+  {
+    "location_id": "TPE-NIGHT-008",
+    "name": "華西街觀光夜市",
+    "type": "night_market",
+    "address": "臺北市萬華區廣州街至貴陽街",
+    "district": "萬華區",
+    "latitude": 25.0383056,
+    "longitude": 121.4983889,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=c013d9ec-a550-46bd-ac60-45f085930706"
+  },
+  {
+    "location_id": "TPE-NIGHT-011",
+    "name": "饒河街觀光夜市",
+    "type": "night_market",
+    "address": "臺北市松山區饒河街",
+    "district": "松山區",
+    "latitude": 25.0506667,
+    "longitude": 121.5750833,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=c013d9ec-a550-46bd-ac60-45f085930706"
+  },
+  {
+    "location_id": "TPE-NIGHT-017",
+    "name": "石牌商城夜市",
+    "type": "night_market",
+    "address": "臺北市北投區裕民一路、裕民一路40巷、裕民二路、裕民三路",
+    "district": "北投區",
+    "latitude": 25.1159167,
+    "longitude": 121.5170556,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=c013d9ec-a550-46bd-ac60-45f085930706"
+  },
+  {
+    "location_id": "TPE-NIGHT-025",
+    "name": "南機場夜市",
+    "type": "night_market",
+    "address": "臺北市中正區中華路2段307巷至315巷間易牙巷",
+    "district": "中正區",
+    "latitude": 25.0294722,
+    "longitude": 121.5059167,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=c013d9ec-a550-46bd-ac60-45f085930706"
+  },
+  {
+    "location_id": "TPE-NIGHT-026",
+    "name": "遼寧街夜市",
+    "type": "night_market",
+    "address": "臺北市中山區長安東路至朱崙街間",
+    "district": "中山區",
+    "latitude": 25.0493611,
+    "longitude": 121.5422222,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=c013d9ec-a550-46bd-ac60-45f085930706"
+  },
+  {
+    "location_id": "TPE-NIGHT-029",
+    "name": "雙城街夜市",
+    "type": "night_market",
+    "address": "臺北市中山區雙城街10巷、13巷至農安街口",
+    "district": "中山區",
+    "latitude": 25.0644444,
+    "longitude": 121.5243333,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=c013d9ec-a550-46bd-ac60-45f085930706"
+  },
+  {
+    "location_id": "TPE-NIGHT-035",
+    "name": "臨江街觀光夜市",
+    "type": "night_market",
+    "address": "臺北市大安區通化街至基隆路口",
+    "district": "大安區",
+    "latitude": 25.0300556,
+    "longitude": 121.55525,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=c013d9ec-a550-46bd-ac60-45f085930706"
+  },
+  {
+    "location_id": "TPE-NIGHT-043",
+    "name": "延三觀光夜市",
+    "type": "night_market",
+    "address": "臺北市大同區民權西路至民族西路口",
+    "district": "大同區",
+    "latitude": 25.0657778,
+    "longitude": 121.5110556,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=c013d9ec-a550-46bd-ac60-45f085930706"
+  },
+  {
+    "location_id": "TPE-NIGHT-044",
+    "name": "寧夏觀光夜市",
+    "type": "night_market",
+    "address": "臺北市大同區民生西路至南京西路間",
+    "district": "大同區",
+    "latitude": 25.0558056,
+    "longitude": 121.5152778,
+    "coordinate_source": "reference",
+    "source_url": "https://data.taipei/dataset/detail?id=c013d9ec-a550-46bd-ac60-45f085930706"
+  },
+  {
+    "location_id": "TPE-NIGHT-SHILIN",
+    "name": "士林觀光夜市",
+    "type": "night_market",
+    "address": "臺北市士林區基河路101號",
+    "district": "士林區",
+    "latitude": 25.088083,
+    "longitude": 121.524194,
+    "coordinate_source": "reference",
+    "source_url": "https://www.travel.taipei/en/attraction/details/1692"
+  },
+  {
+    "location_id": "TPE-NIGHT-JINGMEI",
+    "name": "景美夜市",
+    "type": "night_market",
+    "address": "臺北市文山區景文街137號",
+    "district": "文山區",
+    "latitude": 24.989861,
+    "longitude": 121.541083,
+    "coordinate_source": "reference",
+    "source_url": "https://www.travel.taipei/en/attraction/details/2099"
+  }
+];
+
+/** Illustrative only; real floor plans must be supplied for each actual market. */
+export const DEMO_FLOOR_PLANS: MarketFloorPlan[] = [
+  {
+    "floor_plan_id": "DEMO-FLOOR-001",
+    "location_id": "LOC-001",
+    "name": "市場 A｜1F 示範平面圖",
+    "image_url": "/maps/demo-market-floor.svg",
+    "width": 1200,
+    "height": 800,
+    "source_label": "系統自製示意圖，非實際市場平面圖；未經地理校正",
+    "is_demo": true
+  }
+];

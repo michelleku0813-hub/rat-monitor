@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-labelledby="title description">
+  <title id="title">市場 A 示範平面圖</title>
+  <desc id="description">自製機台擺設示意，包含蔬菜區、水果區、加工區、卸貨區及中央走道。非實際市場平面圖，未經地理校正。</desc>
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#e9edf1" stroke-width="1"/>
+    </pattern>
+    <style>
+      text{font-family:system-ui,"Noto Sans TC",sans-serif;fill:#344256}
+      .heading{font-size:26px;font-weight:700}
+      .zone{font-size:23px;font-weight:700}
+      .small{font-size:16px;fill:#66788f}
+      .stall{fill:#fff;stroke:#cad4df;stroke-width:2}
+      .outline{fill:none;stroke:#566779;stroke-width:8;stroke-linejoin:round}
+    </style>
+  </defs>
+  <rect width="1200" height="800" fill="#f7f9fb"/>
+  <rect width="1200" height="800" fill="url(#grid)"/>
+  <text x="62" y="60" class="heading">市場 A｜1F 示範平面圖</text>
+  <text x="62" y="93" class="small">示意圖・非實際市場・無比例尺・未經地理校正</text>
+  <rect x="960" y="35" width="178" height="52" rx="12" fill="#fff" stroke="#d5dee7"/>
+  <text x="1049" y="68" text-anchor="middle" class="small">機台位置可點選標記</text>
+  <path d="M560 730H65V135H1135V730H640" class="outline"/>
+
+  <rect x="95" y="166" width="416" height="197" rx="12" fill="#e7f1ed" stroke="#b8d4c5" stroke-width="2"/>
+  <text x="119" y="202" class="zone">蔬菜區</text>
+  <g>
+    <rect x="116" y="229" width="80" height="100" rx="5" class="stall"/>
+    <rect x="212" y="229" width="80" height="100" rx="5" class="stall"/>
+    <rect x="308" y="229" width="80" height="100" rx="5" class="stall"/>
+    <rect x="404" y="229" width="80" height="100" rx="5" class="stall"/>
+    <text x="156" y="285" class="small" text-anchor="middle">A01</text>
+    <text x="252" y="285" class="small" text-anchor="middle">A02</text>
+    <text x="348" y="285" class="small" text-anchor="middle">A03</text>
+    <text x="444" y="285" class="small" text-anchor="middle">A04</text>
+  </g>
+  <rect x="689" y="166" width="416" height="197" rx="12" fill="#f8efd9" stroke="#e4d1a3" stroke-width="2"/>
+  <text x="714" y="202" class="zone">水果區</text>
+  <g>
+    <rect x="713" y="229" width="80" height="100" rx="5" class="stall"/>
+    <rect x="809" y="229" width="80" height="100" rx="5" class="stall"/>
+    <rect x="905" y="229" width="80" height="100" rx="5" class="stall"/>
+    <rect x="1001" y="229" width="80" height="100" rx="5" class="stall"/>
+    <text x="753" y="285" class="small" text-anchor="middle">B01</text>
+    <text x="849" y="285" class="small" text-anchor="middle">B02</text>
+    <text x="945" y="285" class="small" text-anchor="middle">B03</text>
+    <text x="1041" y="285" class="small" text-anchor="middle">B04</text>
+  </g>
+
+  <rect x="80" y="392" width="1040" height="100" rx="8" fill="#eaf0f7" stroke="#d0dce9" stroke-width="2"/>
+  <rect x="542" y="150" width="116" height="560" rx="8" fill="#eaf0f7"/>
+  <path d="M100 441H520M680 441H1100" stroke="#a9b7c9" stroke-width="2" stroke-dasharray="12 10"/>
+  <text x="290" y="469" class="small" text-anchor="middle">中央走道</text>
+  <text x="892" y="469" class="small" text-anchor="middle">中央走道</text>
+
+  <rect x="95" y="524" width="416" height="174" rx="12" fill="#e9e9f4" stroke="#c8c8df" stroke-width="2"/>
+  <text x="119" y="562" class="zone">加工與包裝區</text>
+  <rect x="119" y="586" width="166" height="84" rx="5" class="stall"/>
+  <rect x="309" y="586" width="177" height="84" rx="5" class="stall"/>
+  <text x="201" y="637" class="small" text-anchor="middle">C01 工作區</text>
+  <text x="397" y="637" class="small" text-anchor="middle">C02 工作區</text>
+  <rect x="689" y="524" width="416" height="174" rx="12" fill="#e8eef4" stroke="#bfccd9" stroke-width="2"/>
+  <text x="714" y="562" class="zone">卸貨與暫存區</text>
+  <rect x="716" y="587" width="362" height="82" rx="5" fill="#f9fbfd" stroke="#bfccd9" stroke-width="2" stroke-dasharray="10 8"/>
+  <text x="897" y="637" class="small" text-anchor="middle">貨品暫存</text>
+  <path d="M600 695V755M586 741L600 755L614 741" stroke="#66788f" stroke-width="3" fill="none"/>
+  <text x="652" y="760" class="small">主要出入口</text>
+  <text x="62" y="774" class="small">原點在左上角，擺設座標為圖片中的比例位置。</text>
+</svg>

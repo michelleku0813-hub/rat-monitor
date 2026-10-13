@@ -7,7 +7,7 @@ const NAV: { to: string; label: string; icon: string; end?: boolean }[] = [
   { to: '/', label: '監測總覽', icon: '▦', end: true },
   { to: '/analysis', label: '活動分析', icon: '⌁' },
   { to: '/events', label: '偵測事件', icon: '◉' },
-  { to: '/locations', label: '場域熱點', icon: '⌖' },
+  { to: '/locations', label: '台北市地圖', icon: '⌖' },
   { to: '/devices', label: '設備健康', icon: '▤' },
 ];
 
