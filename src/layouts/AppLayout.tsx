@@ -1,13 +1,14 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import type { AdminRole } from '../services/authService';
 import type { AppUserContext } from '../hooks/useAppUser';
+import '../styles/app-shell.css';
 
 const NAV: { to: string; label: string; icon: string; end?: boolean }[] = [
   { to: '/', label: '監測總覽', icon: '▦', end: true },
   { to: '/analysis', label: '活動分析', icon: '⌁' },
   { to: '/events', label: '偵測事件', icon: '◉' },
-  { to: '/locations', label: '台北市地圖', icon: '⌖' },
+  { to: '/locations', label: '地圖與機台', icon: '⌖' },
   { to: '/devices', label: '設備健康', icon: '▤' },
 ];
 
@@ -19,13 +20,15 @@ interface AppLayoutProps {
 
 export function AppLayout({ username, role, onSignOut }: AppLayoutProps) {
   const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
+  const currentPage = NAV.find((item) => item.to === pathname)?.label ?? '工作台';
   const userInitial = username.slice(0, 1).toUpperCase();
 
   return (
     <>
       <div className="demo-banner" role="status">
-        <span className="demo-banner__badge">Prototype</span>
-        <span>Prototype – Demo Data　模擬資料 · 非正式監測結果</span>
+        <span className="demo-banner__badge">示範環境</span>
+        <span>目前顯示模擬監測資料</span>
       </div>
 
       <div className="app-shell">
@@ -64,9 +67,8 @@ export function AppLayout({ username, role, onSignOut }: AppLayoutProps) {
           </nav>
 
           <div className="sidebar__footer">
-            <span className="sidebar__footer-dot" /> 系統資料流正常
-            <br />
-            Prototype · Mock Data
+            <span className="sidebar__footer-label">台北市場域管理</span>
+            <span>AIoT 監測工作台</span>
           </div>
         </aside>
 
@@ -78,14 +80,15 @@ export function AppLayout({ username, role, onSignOut }: AppLayoutProps) {
                 className="mobile-nav-toggle"
                 onClick={() => setOpen((v) => !v)}
                 aria-expanded={open}
+                aria-label={open ? '關閉主選單' : '開啟主選單'}
               >
                 選單
               </button>
-              <span className="app-topbar__secure"><i /> 安全連線 · TLS 模擬</span>
+              <div className="app-topbar__breadcrumb"><span>工作台</span><span aria-hidden="true">/</span><strong>{currentPage}</strong></div>
             </div>
             <div className="app-topbar__profile">
               <span className="app-topbar__user-copy">
-                <strong>{role === 'super_admin' ? '系統管理員' : '營運人員'}</strong>
+                <strong>{role === 'super_admin' ? '系統管理員' : role === 'viewer' ? '檢視人員' : '營運人員'}</strong>
                 <small>{username}</small>
               </span>
               <span className="app-topbar__avatar" aria-hidden>{userInitial}</span>

@@ -1,0 +1,8 @@
+.app-shell .app-topbar__breadcrumb { display: flex; align-items: center; gap: 13px; color: #96a3a9; font-size: 11px; }
+.app-shell .app-topbar__breadcrumb strong { color: #4f6975; font-weight: 500; }
+.app-shell .sidebar__footer { display: grid; gap: 5px; font-size: 10px; }
+.app-shell .sidebar__footer-label { color: #b2c3cc; font-size: 11px; }
+@media (max-width: 620px) {
+  .app-shell .app-topbar__breadcrumb { gap: 8px; font-size: 10px; }
+  .app-shell .app-topbar__breadcrumb > span { display: none; }
+}

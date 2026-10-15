@@ -127,6 +127,8 @@ function LocationPlacementEditor({
   const [savingPlan, setSavingPlan] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [imageFailed, setImageFailed] = useState(false);
+  const [coordinatesOpen, setCoordinatesOpen] = useState(false);
+  const [sensorOpen, setSensorOpen] = useState(false);
   const [now, setNow] = useState(Date.now);
   const imageRequest = useRef(0);
   const alive = useRef(true);
@@ -320,13 +322,9 @@ function LocationPlacementEditor({
   return (
     <section className="market-placement panel" aria-labelledby={`${fieldPrefix}-title`}>
       <header className="market-placement__header">
-        <div>
-          <p className="market-placement__eyebrow">場域配置</p>
-          <h2 id={`${fieldPrefix}-title`}>{location.name}</h2>
-          <p className="market-placement__address">{location.address}</p>
-          <p className="market-placement__coordinates">市場座標 {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}</p>
-        </div>
-        <span className="market-placement__mode">{canEdit ? '可編輯配置' : '檢視模式'}</span>
+        <h2 id={`${fieldPrefix}-title`} className="market-placement__sr-only">{location.name}</h2>
+        <p>{canEdit ? '選擇機台，點選圖面標記位置，再儲存。' : '選擇平面圖或機台，查看目前擺設。'}</p>
+        <span className="market-placement__mode">{canEdit ? '編輯模式' : '檢視模式'}</span>
       </header>
 
       <div className="market-placement__selectors">
@@ -343,92 +341,109 @@ function LocationPlacementEditor({
             {plans.map((plan) => <option key={plan.floor_plan_id} value={plan.floor_plan_id}>{plan.name}{plan.is_demo ? '（示意）' : ''}</option>)}
           </select>
         </label>
-        {canEdit && <button className="market-placement__button market-placement__button--subtle" type="button" disabled={busy} aria-expanded={registrationOpen} onClick={() => setRegistrationOpen((current) => !current)}>{registrationOpen ? '收起新增機台' : '＋ 新增機台'}</button>}
-        {canEdit && <button className="market-placement__button market-placement__button--subtle" type="button" disabled={busy} aria-expanded={uploadOpen} onClick={() => setUploadOpen((current) => !current)}>{uploadOpen ? '收起上傳' : '＋ 新增平面圖'}</button>}
+        {canEdit && <div className="market-placement__toolbar-actions">
+          <button className="market-placement__button market-placement__button--subtle" type="button" disabled={busy} aria-expanded={registrationOpen} aria-controls={`${fieldPrefix}-registration`} onClick={() => { setRegistrationOpen((current) => !current); setUploadOpen(false); }}>{registrationOpen ? '收起新增機台' : '＋ 新增機台'}</button>
+          <button className="market-placement__button market-placement__button--subtle" type="button" disabled={busy} aria-expanded={uploadOpen} aria-controls={`${fieldPrefix}-upload`} onClick={() => { setUploadOpen((current) => !current); setRegistrationOpen(false); }}>{uploadOpen ? '收起上傳' : '＋ 新增平面圖'}</button>
+        </div>}
       </div>
 
-      {registrationOpen && canEdit && <div className="market-placement__upload">
-        <div className="market-placement__upload-heading"><strong>新增機台至「{location.name}」</strong><span>機台編號以英文字母或數字開頭，可使用英數、底線及連字號，最多 64 字元。</span></div>
-        <label htmlFor={`${fieldPrefix}-new-device`}>新機台編號<input id={`${fieldPrefix}-new-device`} value={registrationId} onChange={(event) => setRegistrationId(event.target.value)} maxLength={64} placeholder="例：TPE-MARKET-001-01" disabled={busy} autoComplete="off" /></label>
+      {registrationOpen && canEdit && <div id={`${fieldPrefix}-registration`} className="market-placement__upload">
+        <div className="market-placement__upload-heading"><strong>新增機台</strong><span>先建立草稿，確認位置後再儲存。</span></div>
+        <div className="market-placement__registration-row">
+          <label htmlFor={`${fieldPrefix}-new-device`}>新機台編號<input id={`${fieldPrefix}-new-device`} value={registrationId} onChange={(event) => setRegistrationId(event.target.value)} maxLength={64} placeholder="例：TPE-MARKET-001-01" disabled={busy} autoComplete="off" /></label>
+          <button className="market-placement__button" type="button" onClick={beginNewDevice} disabled={busy || !registrationValid || registrationDuplicate}>設定新機台</button>
+        </div>
         {!!registrationId.trim() && !registrationValid && <p className="market-placement__error">機台編號格式不符，請使用英文字母、數字、底線或連字號。</p>}
         {registrationDuplicate && <p className="market-placement__error">此機台編號已存在，請從上方機台選單選擇。</p>}
-        <p className="market-placement__hint">先建立位置草稿，確認後儲存才會新增機台。初始經緯度採用此場域座標，請依機台實際擺設調整。</p>
-        <button className="market-placement__button" type="button" onClick={beginNewDevice} disabled={busy || !registrationValid || registrationDuplicate} style={{ marginTop: 12 }}>設定新機台</button>
+        <p className="market-placement__hint">以英數開頭，可含底線、連字號，最多 64 字元。初始經緯度採用此場域座標。</p>
       </div>}
 
-      {uploadOpen && canEdit && (
-        <div className="market-placement__upload">
-          <div className="market-placement__upload-heading"><strong>上傳市場平面圖</strong><span>PNG / JPEG / WebP · 最大 2 MB · 各邊不超過 8,000 px</span></div>
+      {uploadOpen && canEdit && <div id={`${fieldPrefix}-upload`} className="market-placement__upload">
+        <div className="market-placement__upload-heading"><strong>上傳市場平面圖</strong><span>PNG / JPEG / WebP · 最大 2 MB · 各邊不超過 8,000 px</span></div>
+        <div className="market-placement__upload-grid">
           <label className="market-placement__file" htmlFor={`${fieldPrefix}-image`}>選擇圖片<input id={`${fieldPrefix}-image`} type="file" accept="image/png,image/jpeg,image/webp" onChange={uploadImage} disabled={busy || readingImage} /></label>
-          {readingImage && <p role="status">正在讀取圖片…</p>}
-          {upload && <div className="market-placement__preview"><img src={upload.dataUrl} alt="待儲存的市場平面圖預覽" /><span>{upload.filename} · {upload.width} × {upload.height} px</span></div>}
-          <div className="market-placement__two-columns">
-            <label htmlFor={`${fieldPrefix}-plan-name`}>平面圖名稱<input id={`${fieldPrefix}-plan-name`} value={planName} onChange={(event) => setPlanName(event.target.value)} maxLength={100} placeholder="例：一樓果菜區" disabled={busy} /></label>
-            <label htmlFor={`${fieldPrefix}-plan-source`}>圖片來源<input id={`${fieldPrefix}-plan-source`} value={planSource} onChange={(event) => setPlanSource(event.target.value)} maxLength={180} placeholder="例：市場管理處提供 / 現場繪製" disabled={busy} /></label>
-          </div>
-          {uploadError && <p className="market-placement__error" role="alert">{uploadError}</p>}
-          <button className="market-placement__button" type="button" onClick={savePlan} disabled={busy || readingImage || !upload || !planName.trim() || !planSource.trim()}>{savingPlan ? '儲存平面圖中…' : '儲存平面圖'}</button>
+          <label htmlFor={`${fieldPrefix}-plan-name`}>平面圖名稱<input id={`${fieldPrefix}-plan-name`} value={planName} onChange={(event) => setPlanName(event.target.value)} maxLength={100} placeholder="例：一樓果菜區" disabled={busy} /></label>
+          <label htmlFor={`${fieldPrefix}-plan-source`}>圖片來源<input id={`${fieldPrefix}-plan-source`} value={planSource} onChange={(event) => setPlanSource(event.target.value)} maxLength={180} placeholder="例：市場管理處提供" disabled={busy} /></label>
         </div>
-      )}
+        {readingImage && <p className="market-placement__hint" role="status">正在讀取圖片…</p>}
+        {upload && <div className="market-placement__preview"><img src={upload.dataUrl} alt="待儲存的市場平面圖預覽" /><span>{upload.filename} · {upload.width} × {upload.height} px</span></div>}
+        {uploadError && <p className="market-placement__error" role="alert">{uploadError}</p>}
+        <div className="market-placement__upload-footer"><span>圖片儲存後即可標記機台位置。</span><button className="market-placement__button" type="button" onClick={savePlan} disabled={busy || readingImage || !upload || !planName.trim() || !planSource.trim()}>{savingPlan ? '儲存平面圖中…' : '儲存平面圖'}</button></div>
+      </div>}
 
       <div className="market-placement__workspace">
         <div className="market-placement__floor">
-          {selectedPlan ? (
-            <>
-              <div className="market-placement__floor-heading"><h3>{selectedPlan.name}</h3>{selectedPlan.is_demo && <span className="market-placement__demo">示意圖，非實際市場配置</span>}</div>
-              {!imageFailed ? (
-                <div className="market-placement__image-shell">
-                  <div className="market-placement__image">
-                    <img src={selectedPlan.image_url} width={selectedPlan.width} height={selectedPlan.height} alt={`${location.name} ${selectedPlan.name}`} onError={() => setImageFailed(true)} draggable={false} />
-                    <button type="button" className="market-placement__image-target" aria-label="在平面圖上設定所選機台位置；也可使用下方 X、Y 百分比輸入欄位" onClick={setPoint} disabled={!canEdit || busy || !deviceId} tabIndex={-1} />
-                    {markers.map((marker) => (
-                      <button type="button" key={marker.id} className={`market-placement__marker${marker.selected ? ' is-selected' : ''}`} style={{ left: `${marker.x * 100}%`, top: `${marker.y * 100}%` }} onClick={() => selectDevice(marker.id)} disabled={busy} aria-label={`${marker.id}，平面圖 X ${(marker.x * 100).toFixed(1)}%、Y ${(marker.y * 100).toFixed(1)}%`} aria-pressed={marker.selected}><span className="market-placement__marker-dot" /><span className="market-placement__marker-label">{marker.id}</span></button>
-                    ))}
-                  </div>
-                </div>
-              ) : <div className="market-placement__empty" role="alert">無法載入這張平面圖，請選擇其他圖片或重新上傳。</div>}
-              <p className="market-placement__source">來源：{selectedPlan.source_label}{selectedPlan.source_url && <a href={selectedPlan.source_url} target="_blank" rel="noreferrer">查看來源 ↗</a>}</p>
-              <p className="market-placement__hint">{canEdit && deviceId ? '點選圖片設定機台位置，或輸入 X、Y 百分比。' : '點選機台標記可查看配置。'} 左上角為 0%、0%；右下角為 100%、100%。</p>
-            </>
-          ) : <div className="market-placement__empty"><strong>此場域尚無平面圖</strong><span>{canEdit ? '上傳市場或果菜區圖片，即可標記機台擺設位置。' : '上傳平面圖後，可在此查看機台擺設位置。'}</span></div>}
-        </div>
-
-        <div className="market-placement__details">
-          <div className="market-placement__detail-heading"><h3>機台配置</h3>{dirty && canEdit && <span className="market-placement__unsaved">尚未儲存</span>}</div>
-          {!deviceId ? <p className="market-placement__hint">{canEdit && devices.length ? '此場域尚未配置機台，可從上方選擇既有機台並設定位置。' : '此場域目前沒有已配置的機台。'}</p> : (
-            <>
-              {isMoving && <p className="market-placement__move-notice">此機台目前配置於其他場域。儲存後將移至「{location.name}」，原場域的平面圖位置將更新。</p>}
-              {isNewDevice && <p className="market-placement__move-notice">新增機台草稿：{deviceId}。目前經緯度預填此場域座標，請確認後儲存。</p>}
-              <fieldset disabled={!canEdit || busy} className="market-placement__fields">
-                <legend>平面圖位置</legend>
-                <div className="market-placement__two-columns">
-                  <label htmlFor={`${fieldPrefix}-x`}>X（左右 %）<input id={`${fieldPrefix}-x`} type="number" min="0" max="100" step="any" value={visiblePoint ? draft.x : ''} onChange={(event) => updateDraft('x', event.target.value)} disabled={!selectedPlan || !canEdit || busy} placeholder="0–100" /></label>
-                  <label htmlFor={`${fieldPrefix}-y`}>Y（上下 %）<input id={`${fieldPrefix}-y`} type="number" min="0" max="100" step="any" value={visiblePoint ? draft.y : ''} onChange={(event) => updateDraft('y', event.target.value)} disabled={!selectedPlan || !canEdit || busy} placeholder="0–100" /></label>
-                </div>
-                {!pointValid && <p className="market-placement__error">X、Y 請同時填寫 0 至 100 之間的數值。</p>}
-                {hasPoint && !visiblePoint && <p className="market-placement__hint">此機台已標記於「{plans.find((plan) => plan.floor_plan_id === draft.floorPlanId)?.name}」。切換平面圖不會刪除原標記；在此設定新位置後才會更新。</p>}
-                {canEdit && <button className="market-placement__clear" type="button" disabled={busy || pointEmpty || !visiblePoint} onClick={() => { setDraft((current) => ({ ...current, floorPlanId: '', x: '', y: '' })); setStatus('平面圖標記已清除；儲存後生效。'); setError(''); }}>清除平面圖標記</button>}
-              </fieldset>
-
-              <fieldset disabled={!canEdit || busy} className="market-placement__fields">
-                <legend>機台設定經緯度</legend>
-                <div className="market-placement__two-columns">
-                  <label htmlFor={`${fieldPrefix}-latitude`}>緯度<input id={`${fieldPrefix}-latitude`} type="number" min="-90" max="90" step="any" value={draft.latitude} onChange={(event) => updateDraft('latitude', event.target.value)} placeholder="例：25.033000" /></label>
-                  <label htmlFor={`${fieldPrefix}-longitude`}>經度<input id={`${fieldPrefix}-longitude`} type="number" min="-180" max="180" step="any" value={draft.longitude} onChange={(event) => updateDraft('longitude', event.target.value)} placeholder="例：121.565000" /></label>
-                </div>
-                {!coordinateValid && <p className="market-placement__error">請同時填寫有效經緯度：緯度 −90～90，經度 −180～180。</p>}
-                <label htmlFor={`${fieldPrefix}-note`}>位置備註<textarea id={`${fieldPrefix}-note`} rows={2} value={draft.note} onChange={(event) => updateDraft('note', event.target.value)} maxLength={500} placeholder="例：A 區 23 號攤位旁，靠北側入口" /></label>
-              </fieldset>
-
-              <div className="market-placement__sensor">
-                <div className="market-placement__detail-heading"><h4>座標感測器回報</h4><span className={`market-placement__sensor-state${sensor && sensorStale ? ' is-stale' : ''}`}>{sensor ? sensorStale ? '超過 5 分鐘 / 時間無效' : '最近回報' : '尚無回報'}</span></div>
-                {sensor ? <><p className="market-placement__sensor-coordinates">{sensor.latitude.toFixed(6)}, {sensor.longitude.toFixed(6)}</p><p>精度：{sensor.accuracy_m !== null ? `± ${sensor.accuracy_m.toFixed(1)} 公尺` : '未提供'}</p><p>時間：{Number.isFinite(sensorTime) ? new Date(sensorTime).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false }) : '回報時間無法辨識'}（台北時間）</p></> : <p>機台接入座標感測器後，最新位置將顯示於此。</p>}
+          <div className="market-placement__floor-heading">
+            <div><span className="market-placement__canvas-label">場地平面圖</span>{selectedPlan?.is_demo && <span className="market-placement__demo">示意圖，非實際市場配置</span>}</div>
+            {selectedPlan && <span className="market-placement__marker-count">{markers.length} 台已標記</span>}
+          </div>
+          {selectedPlan ? <>
+            {!imageFailed ? <div className="market-placement__image-shell">
+              <div className="market-placement__image">
+                <img src={selectedPlan.image_url} width={selectedPlan.width} height={selectedPlan.height} alt={`${location.name} ${selectedPlan.name}`} onError={() => setImageFailed(true)} draggable={false} />
+                <button type="button" className="market-placement__image-target" aria-label="在平面圖上設定所選機台位置；也可展開進階座標輸入 X、Y 百分比" onClick={setPoint} disabled={!canEdit || busy || !deviceId} tabIndex={-1} />
+                {markers.map((marker) => <button type="button" key={marker.id} className={`market-placement__marker${marker.selected ? ' is-selected' : ''}`} style={{ left: `${marker.x * 100}%`, top: `${marker.y * 100}%` }} onClick={() => selectDevice(marker.id)} disabled={busy} aria-label={`${marker.id}，平面圖 X ${(marker.x * 100).toFixed(1)}%、Y ${(marker.y * 100).toFixed(1)}%`} aria-pressed={marker.selected}><span className="market-placement__marker-dot" /><span className="market-placement__marker-label">{marker.id}</span></button>)}
               </div>
-              <p className="market-placement__hint">GPS 經緯度與室內圖片標記分開記錄；一般 GPS 無法直接換算市場平面圖中的位置，請依現場位置設定。</p>
-              {canEdit && <div className="market-placement__save"><button className="market-placement__button" type="button" onClick={savePlacement} disabled={!canSave}>{saving ? '儲存位置中…' : isNewDevice ? '新增並儲存機台' : isMoving ? '儲存並移至此場域' : '儲存機台位置'}</button><button className="market-placement__clear" type="button" disabled={busy || !dirty} onClick={() => { setDraft(draftFromPlacement(selectedPlacement)); setStatus(''); setError(''); }}>還原修改</button></div>}
-            </>
-          )}
+            </div> : <div className="market-placement__empty" role="alert"><strong>平面圖無法載入</strong><span>請選擇其他圖片或重新上傳。</span></div>}
+            <div className="market-placement__canvas-footer"><p className="market-placement__source" title={selectedPlan.source_label}>來源：{selectedPlan.source_label}</p>{selectedPlan.source_url && <a href={selectedPlan.source_url} target="_blank" rel="noreferrer">查看來源 ↗</a>}</div>
+          </> : <div className="market-placement__empty">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true"><rect x="8" y="6" width="32" height="36" rx="5" stroke="currentColor" strokeWidth="1.5" /><path d="M17 16h14M17 23h7m-7 10 6-7 7 7 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            <strong>此場域尚無平面圖</strong><span>{canEdit ? '上傳市場或樓層圖片，開始標記機台。' : '上傳平面圖後，即可查看機台擺設。'}</span>
+            {canEdit && <button className="market-placement__button market-placement__button--subtle" type="button" disabled={busy} onClick={() => { setUploadOpen(true); setRegistrationOpen(false); }}>上傳平面圖</button>}
+          </div>}
+          {selectedPlan && <p className="market-placement__canvas-instruction"><span className="market-placement__legend-dot" />目前選取機台<span className="market-placement__legend-dot is-other" />其他機台<span>{canEdit && deviceId ? '點一下圖面即可移動標記' : '點選標記查看機台'}</span></p>}
         </div>
+
+        <aside className="market-placement__details" aria-label="機台位置設定">
+          <div className="market-placement__device-heading"><span>目前機台</span>{deviceId && <span className={`market-placement__draft-state${dirty && canEdit ? ' is-dirty' : ''}`}>{dirty && canEdit ? '尚未儲存' : canEdit ? '已儲存' : '唯讀'}</span>}</div>
+          {deviceId ? <>
+            <h3 className="market-placement__selected-device">{deviceId}</h3>
+            {isMoving && <p className="market-placement__move-notice">儲存後，這台機台將移至「{location.name}」。</p>}
+            {isNewDevice && <p className="market-placement__move-notice">新增機台草稿。經緯度預填此場域座標，請確認後儲存。</p>}
+            <div className="market-placement__position-card">
+              <span className={`market-placement__position-icon${hasPoint && visiblePoint ? ' is-placed' : ''}`} aria-hidden="true">⌖</span>
+              <div><strong>{hasPoint ? visiblePoint ? '已標記平面位置' : '已標記於其他平面圖' : '尚未標記平面位置'}</strong><p>{hasPoint && visiblePoint ? `X ${percentString(Number(draft.x))}% · Y ${percentString(Number(draft.y))}%` : hasPoint ? plans.find((plan) => plan.floor_plan_id === draft.floorPlanId)?.name : selectedPlan && canEdit ? '點選左側圖面設定位置' : '選擇平面圖後即可標記'}</p></div>
+            </div>
+            {hasPoint && !visiblePoint && <button className="market-placement__clear market-placement__view-point" type="button" disabled={busy} onClick={() => selectPlan(draft.floorPlanId)}>查看已標記圖面 ↗</button>}
+            {canEdit && hasPoint && visiblePoint && <button className="market-placement__clear market-placement__remove-point" type="button" disabled={busy} onClick={() => { setDraft((current) => ({ ...current, floorPlanId: '', x: '', y: '' })); setStatus('平面圖標記已清除；儲存後生效。'); setError(''); }}>清除平面圖標記</button>}
+
+            <label className="market-placement__note" htmlFor={`${fieldPrefix}-note`}>位置備註<textarea id={`${fieldPrefix}-note`} rows={2} value={draft.note} onChange={(event) => updateDraft('note', event.target.value)} disabled={!canEdit || busy} maxLength={500} placeholder="例：A 區 23 號攤位旁" /></label>
+
+            <div className="market-placement__advanced">
+              <button className="market-placement__disclosure" type="button" aria-expanded={coordinatesOpen} aria-controls={`${fieldPrefix}-coordinates`} onClick={() => setCoordinatesOpen((current) => !current)}><span>進階座標</span><span>{!coordinateValid || !pointValid ? <span className="market-placement__invalid-tag">需檢查</span> : null}<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></span></button>
+              <div id={`${fieldPrefix}-coordinates`} hidden={!coordinatesOpen} className="market-placement__advanced-body">
+                <fieldset disabled={!canEdit || busy} className="market-placement__fields">
+                  <legend>平面圖百分比</legend>
+                  <div className="market-placement__two-columns">
+                    <label htmlFor={`${fieldPrefix}-x`}>X（左右 %）<input id={`${fieldPrefix}-x`} type="number" min="0" max="100" step="any" value={visiblePoint ? draft.x : ''} onChange={(event) => updateDraft('x', event.target.value)} disabled={!selectedPlan || !canEdit || busy} placeholder="0–100" /></label>
+                    <label htmlFor={`${fieldPrefix}-y`}>Y（上下 %）<input id={`${fieldPrefix}-y`} type="number" min="0" max="100" step="any" value={visiblePoint ? draft.y : ''} onChange={(event) => updateDraft('y', event.target.value)} disabled={!selectedPlan || !canEdit || busy} placeholder="0–100" /></label>
+                  </div>
+                  <p className="market-placement__hint">左上角 0%、0%；右下角 100%、100%。</p>
+                  {!pointValid && <p className="market-placement__error">X、Y 請同時填寫 0 至 100 之間的數值。</p>}
+                </fieldset>
+                <fieldset disabled={!canEdit || busy} className="market-placement__fields">
+                  <legend>機台設定經緯度</legend>
+                  <div className="market-placement__two-columns">
+                    <label htmlFor={`${fieldPrefix}-latitude`}>緯度<input id={`${fieldPrefix}-latitude`} type="number" min="-90" max="90" step="any" value={draft.latitude} onChange={(event) => updateDraft('latitude', event.target.value)} placeholder="例：25.033000" /></label>
+                    <label htmlFor={`${fieldPrefix}-longitude`}>經度<input id={`${fieldPrefix}-longitude`} type="number" min="-180" max="180" step="any" value={draft.longitude} onChange={(event) => updateDraft('longitude', event.target.value)} placeholder="例：121.565000" /></label>
+                  </div>
+                  {!coordinateValid && <p className="market-placement__error">請同時填寫有效經緯度：緯度 −90～90，經度 −180～180。</p>}
+                  <p className="market-placement__hint">GPS 與平面圖位置分開記錄，無法直接互相換算。</p>
+                </fieldset>
+              </div>
+            </div>
+
+            <div className="market-placement__sensor">
+              <div className="market-placement__detail-heading"><h4>座標感測器</h4><span className={`market-placement__sensor-state${sensor && sensorStale ? ' is-stale' : ''}`}>{sensor ? sensorStale ? '回報過期' : '最近回報' : '尚無回報'}</span></div>
+              {sensor && <>
+                <button className="market-placement__sensor-toggle" type="button" aria-expanded={sensorOpen} aria-controls={`${fieldPrefix}-sensor`} onClick={() => setSensorOpen((current) => !current)}>感測器回報詳情 <span aria-hidden="true">{sensorOpen ? '−' : '＋'}</span></button>
+                <div id={`${fieldPrefix}-sensor`} hidden={!sensorOpen} className="market-placement__sensor-body"><p className="market-placement__sensor-coordinates">{sensor.latitude.toFixed(6)}, {sensor.longitude.toFixed(6)}</p><p>精度：{sensor.accuracy_m !== null ? `± ${sensor.accuracy_m.toFixed(1)} 公尺` : '未提供'}</p><p>時間：{Number.isFinite(sensorTime) ? new Date(sensorTime).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false }) : '回報時間無法辨識'}（台北時間）</p>{sensorStale && <p className="market-placement__stale-note">回報已超過 5 分鐘，或時間無效。</p>}</div>
+              </>}
+            </div>
+
+            {canEdit && <div className="market-placement__save"><button className="market-placement__button" type="button" onClick={savePlacement} disabled={!canSave}>{saving ? '儲存位置中…' : isNewDevice ? '新增並儲存機台' : isMoving ? '儲存並移至此場域' : '儲存機台位置'}</button><button className="market-placement__clear" type="button" disabled={busy || !dirty} onClick={() => { setDraft(draftFromPlacement(selectedPlacement)); setStatus(''); setError(''); }}>還原修改</button></div>}
+          </> : <div className="market-placement__no-device"><span aria-hidden="true">⌖</span><strong>選擇一台機台</strong><p>{canEdit ? '從上方選擇既有機台，或新增機台後開始標記。' : '此場域目前沒有已配置的機台。'}</p></div>}
+        </aside>
       </div>
       {error && <p className="market-placement__error market-placement__feedback" role="alert">{error}</p>}
       {status && <p className="market-placement__status market-placement__feedback" role="status">{status}</p>}

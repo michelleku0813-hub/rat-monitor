@@ -54,10 +54,14 @@ test('API map errors stay explicit and live GPS polling preserves floor drafts b
   await expect(page.getByRole('alert')).toContainText('測試後端暫時無法提供地圖');
   await expect(page.locator('.market-placement')).toHaveCount(0);
   await expect(page.getByText('72 個場域', { exact: true })).toHaveCount(0);
+  await page.locator('.locations-data-note > summary').click();
   await expect(page.getByText('地圖設定儲存於後端；感測器回報每 15 秒更新。', { exact: false })).toBeVisible();
   failState = false;
   await page.getByRole('button', { name: '重新載入', exact: true }).click();
   await expect(page.getByText('1 個場域', { exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: '場地圖與機台', exact: true }).click();
+  await page.getByRole('button', { name: /^進階座標/ }).click();
+  await page.getByRole('button', { name: /^感測器回報詳情/ }).click();
   await expect(page.locator('.market-placement__header h2')).toHaveText('API 果菜市場');
   const sensorCard = page.locator('.market-placement__sensor');
   await expect(sensorCard).toContainText('25.065500, 121.535500');
@@ -67,6 +71,8 @@ test('API map errors stay explicit and live GPS polling preserves floor drafts b
   await expect(page.getByLabel('緯度', { exact: true })).toHaveValue('25.0382');
   await expect(page.getByLabel('經度', { exact: true })).toHaveValue('121.5002');
 
+  await page.getByRole('tab', { name: '台北市地圖', exact: true }).click();
+  await page.getByRole('button', { name: '圖層', exact: true }).click();
   const configuredMarker = page.getByRole('button', { name: 'RAT-TPE-001 設定位置', exact: true });
   const sensorMarker = page.getByRole('button', { name: 'RAT-TPE-001 感測器回報', exact: true });
   await expect(configuredMarker).toHaveCount(1);
@@ -81,6 +87,7 @@ test('API map errors stay explicit and live GPS polling preserves floor drafts b
   await expect(sensorMarker).toHaveCount(1);
   await page.getByRole('checkbox', { name: '機台設定位置', exact: true }).check();
 
+  await page.getByRole('tab', { name: '場地圖與機台', exact: true }).click();
   await page.getByLabel('X（左右 %）').fill('54.123456');
   await page.getByLabel('Y（上下 %）').fill('72.654321');
   await page.getByRole('textbox', { name: '位置備註', exact: true }).fill('輪詢期間尚未儲存的配置');
@@ -110,6 +117,9 @@ test('API map errors stay explicit and live GPS polling preserves floor drafts b
   const readsBeforeReload = stateReads;
   await page.reload();
   await expect.poll(() => stateReads).toBeGreaterThan(readsBeforeReload);
+  await page.getByRole('tab', { name: '場地圖與機台', exact: true }).click();
+  await page.getByRole('button', { name: /^進階座標/ }).click();
+  await page.getByRole('button', { name: /^感測器回報詳情/ }).click();
   await expect(page.getByLabel('X（左右 %）')).toHaveValue('54.123456');
   await expect(page.getByLabel('Y（上下 %）')).toHaveValue('72.654321');
   await expect(sensorCard).toContainText('25.069000, 121.540000');

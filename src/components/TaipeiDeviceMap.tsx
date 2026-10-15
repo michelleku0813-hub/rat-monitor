@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import '../styles/taipei-map.css';
@@ -38,6 +38,8 @@ const LAYERS: { key: LayerKey; label: string; color: string }[] = [
   { key: 'sensors', label: '感測器回報', color: '#2987d0' },
   { key: 'risk', label: '監測風險', color: '#d37a42' },
 ];
+const CATEGORY_LAYERS = LAYERS.slice(0, 3);
+const OVERLAY_LAYERS = LAYERS.slice(3);
 const COLORS: Record<TaipeiRiskLevel, string> = { low: '#5b9f93', medium: '#d99a00', high: '#c73e35' };
 const TAIPEI_BOUNDS: L.LatLngBoundsExpression = [[24.96, 121.45], [25.21, 121.665]];
 const TILE_URL = import.meta.env.VITE_MAP_TILE_URL || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -66,6 +68,8 @@ export function TaipeiDeviceMap({ locations, devices, placements = [], metrics, 
   const [layers, setLayers] = useState<Record<LayerKey, boolean>>({ markets: true, nightMarkets: true, other: true, risk: true, devices: true, sensors: true });
   const [query, setQuery] = useState('');
   const [district, setDistrict] = useState('all');
+  const [showLayers, setShowLayers] = useState(false);
+  const layerPanelId = useId();
   const [resultCount, setResultCount] = useState(12);
   const [tileError, setTileError] = useState(false);
   const [timeNow, setTimeNow] = useState(Date.now);
@@ -73,7 +77,8 @@ export function TaipeiDeviceMap({ locations, devices, placements = [], metrics, 
   const activeId = selectedLocationId === undefined ? uncontrolledId : selectedLocationId;
   const districts = useMemo(() => [...new Set(locations.map((location) => location.district).filter(Boolean))].sort(), [locations]);
   const visible = useMemo(() => locations.filter((location) => (district === 'all' || district === location.district)
-    && `${location.name} ${location.address} ${location.location_id}`.toLowerCase().includes(query.trim().toLowerCase())), [locations, query, district]);
+    && layers[location.type === 'market' ? 'markets' : location.type === 'night_market' ? 'nightMarkets' : 'other']
+    && `${location.name} ${location.address} ${location.location_id}`.toLowerCase().includes(query.trim().toLowerCase())), [locations, query, district, layers]);
   const selected = locations.find((location) => location.location_id === activeId);
   const visibleIds = useMemo(() => new Set(visible.map((location) => location.location_id)), [visible]);
 
@@ -169,18 +174,51 @@ export function TaipeiDeviceMap({ locations, devices, placements = [], metrics, 
   const selectFromList = (location: MapLocation) => { setUncontrolledId(location.location_id); onLocationSelect?.(location); };
   return (
     <section className={`taipei-device-map taipei-street-map ${className ?? ''}`} aria-label={title}>
-      <header className="taipei-device-map__header"><div><h2 className="taipei-device-map__title">{title}</h2><p className="taipei-device-map__subtitle">實際街道底圖 · WGS84 經緯度 · 點選場域查看平面圖與機台位置</p></div><span className="taipei-device-map__count">{locations.length} 個場域</span></header>
-      <div className="taipei-map-toolbar">
-        <label><span>搜尋場域</span><input type="search" placeholder="市場、夜市名稱或地址" value={query} onChange={(event) => { setQuery(event.target.value); setResultCount(12); }} /></label>
-        <label><span>行政區</span><select value={district} onChange={(event) => { setDistrict(event.target.value); setResultCount(12); }}><option value="all">全台北市</option>{districts.map((item) => <option key={item}>{item}</option>)}</select></label>
-        <button type="button" onClick={() => map.current?.fitBounds(TAIPEI_BOUNDS)}>台北市全景</button>
+      <header className="taipei-device-map__header">
+        <div><h2 className="taipei-device-map__title">{title}</h2><p className="taipei-device-map__subtitle">搜尋市場或夜市，選擇場域查看機台與定位。</p></div>
+        <span className="taipei-device-map__count">{locations.length} 個場域</span>
+      </header>
+      <div className="taipei-map-controls">
+        <div className="taipei-map-toolbar">
+          <label className="taipei-map-search">
+            <span>搜尋場域</span>
+            <span className="taipei-map-search__field">
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4.5 4.5" /></svg>
+              <input type="search" placeholder="輸入市場、夜市名稱或地址" value={query} onChange={(event) => { setQuery(event.target.value); setResultCount(12); }} />
+            </span>
+          </label>
+          <label className="taipei-map-district"><span>行政區</span><select value={district} onChange={(event) => { setDistrict(event.target.value); setResultCount(12); }}><option value="all">全台北市</option>{districts.map((item) => <option key={item}>{item}</option>)}</select></label>
+          <button className="taipei-map-reset" type="button" onClick={() => map.current?.fitBounds(TAIPEI_BOUNDS)}>
+            <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M4 10a8 8 0 1 1 1.2 6.3M4 4v6h6" /></svg>
+            台北市全景
+          </button>
+        </div>
+        <div className="taipei-map-filter-row">
+          <fieldset className="taipei-map-categories">
+            <legend>分類篩選</legend>
+            {CATEGORY_LAYERS.map((layer) => <label key={layer.key} className={layers[layer.key] ? 'is-active' : ''}>
+              <input type="checkbox" checked={layers[layer.key]} onChange={(event) => { setLayers((current) => ({ ...current, [layer.key]: event.target.checked })); setResultCount(12); }} />
+              <i style={{ background: layer.color }} aria-hidden="true" />{layer.label}
+            </label>)}
+          </fieldset>
+          <button className={`taipei-map-layer-toggle${showLayers ? ' is-active' : ''}`} type="button" aria-expanded={showLayers} aria-controls={layerPanelId} onClick={() => setShowLayers((current) => !current)}>
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="m3 7 9-5 9 5-9 5-9-5Zm0 5 9 5 9-5M3 17l9 5 9-5" /></svg>
+            圖層<span className="taipei-map-layer-toggle__count" aria-hidden="true">{OVERLAY_LAYERS.filter((layer) => layers[layer.key]).length}</span>
+          </button>
+        </div>
+        <fieldset id={layerPanelId} className="taipei-map-layers" hidden={!showLayers}>
+          <legend>顯示圖層</legend>
+          {OVERLAY_LAYERS.map((layer) => <label key={layer.key}><input type="checkbox" checked={layers[layer.key]} onChange={(event) => setLayers((current) => ({ ...current, [layer.key]: event.target.checked }))} /><i style={{ background: layer.color }} aria-hidden="true" />{layer.label}</label>)}
+        </fieldset>
       </div>
-      <fieldset className="taipei-map-layers"><legend>顯示圖層</legend>{LAYERS.map((layer) => <label key={layer.key}><input type="checkbox" checked={layers[layer.key]} onChange={(event) => setLayers((current) => ({ ...current, [layer.key]: event.target.checked }))} /><i style={{ background: layer.color }} />{layer.label}</label>)}</fieldset>
       {coordinatePicking && <p className="taipei-map-notice" role="status">座標選取中：請點選街道地圖，將座標帶入場域設定。</p>}
       {tileError && <p className="taipei-map-notice is-error" role="status">部分街道圖磚載入失敗。場域座標與下方列表仍可使用。<button type="button" onClick={() => { setTileError(false); tiles.current?.redraw(); }}>重試底圖</button></p>}
       <div ref={container} className={`taipei-map-surface${coordinatePicking ? ' is-picking' : ''}`} role="region" aria-label="台北市互動街道地圖，可用方向鍵移動、加減鍵縮放" />
-      <div className="taipei-map-legend"><span>市 菜市場</span><span>夜 夜市</span><span>▣ 設定位置：<i className="is-online" />正常 <i className="is-warning" />留意 <i className="is-offline" />離線 <i className="is-unknown" />尚無健康資料</span><span>◎ 感測器（灰色＝超過 5 分鐘）</span><span>風險圈：綠低／黃中／紅高；大小表示事件率，非影響範圍</span></div>
-      <div className="taipei-map-results"><div className="taipei-map-results__head"><strong>場域列表</strong><span>符合條件 {visible.length} 個 · 顯示 {Math.min(resultCount, visible.length)} 個</span></div><div className="taipei-map-results__grid">{visible.slice(0, resultCount).map((location) => <button key={location.location_id} type="button" className={activeId === location.location_id ? 'is-selected' : ''} aria-pressed={activeId === location.location_id} onClick={() => selectFromList(location)}><strong>{location.name}</strong><small>{location.district} · {location.type === 'night_market' ? '夜市' : location.type === 'market' ? '市場' : '場域'} · {sourceLabel(location)}</small></button>)}</div>{visible.length > resultCount && <button type="button" className="taipei-map-more" onClick={() => setResultCount((count) => count + 12)}>顯示更多場域</button>}{visible.length === 0 && <p>沒有符合條件的場域，請調整搜尋或行政區。</p>}</div>
+      <div className="taipei-map-legend">
+        <div className="taipei-map-legend__items"><span><b className="taipei-map-legend__market">市</b> 市場</span><span><b className="taipei-map-legend__night">夜</b> 夜市</span><span><b className="taipei-map-legend__device">▣</b> 機台</span><span><b className="taipei-map-legend__sensor">◎</b> 感測器</span></div>
+        <details className="taipei-map-legend__details"><summary>圖例說明</summary><div><p>機台狀態：<i className="is-online" />正常 <i className="is-warning" />留意 <i className="is-offline" />離線 <i className="is-unknown" />尚無健康資料</p><p>感測器灰色表示回報超過 5 分鐘。</p><p>風險圈：綠低／黃中／紅高；大小表示事件率，非影響範圍。</p><p>「場」標記表示其他場域。</p></div></details>
+      </div>
+      <div className="taipei-map-results"><div className="taipei-map-results__head"><strong>場域列表 <span className="taipei-map-results__total">{visible.length}</span></strong><span>符合條件 {visible.length} 個 · 顯示 {Math.min(resultCount, visible.length)} 個</span></div><div className="taipei-map-results__grid">{visible.slice(0, resultCount).map((location) => <button key={location.location_id} type="button" className={activeId === location.location_id ? 'is-selected' : ''} aria-pressed={activeId === location.location_id} onClick={() => selectFromList(location)}><strong>{location.name}</strong><small>{location.district} · {location.type === 'night_market' ? '夜市' : location.type === 'market' ? '市場' : '場域'} · {sourceLabel(location)}</small></button>)}</div>{visible.length > resultCount && <button type="button" className="taipei-map-more" onClick={() => setResultCount((count) => count + 12)}>顯示更多場域</button>}{visible.length === 0 && <p className="taipei-map-results__empty">沒有符合條件的場域，請調整搜尋、行政區或分類。</p>}</div>
       {selected && <div className="taipei-map-selected"><div><strong>{selected.name}</strong><p>{selected.address}</p><small>{selected.latitude.toFixed(6)}, {selected.longitude.toFixed(6)} · {sourceLabel(selected)}</small></div>{selected.source_url && <a href={selected.source_url} target="_blank" rel="noreferrer">查看資料來源 ↗</a>}</div>}
     </section>
   );

@@ -2,8 +2,11 @@ import { test, expect, type Page } from '@playwright/test';
 import type { MapState } from '../../src/types/map';
 
 async function selectDemoMarket(page: Page) {
+  await page.getByRole('tab', { name: '台北市地圖', exact: true }).click();
   await page.getByRole('searchbox', { name: '搜尋場域' }).fill('市場 A');
   await page.locator('.taipei-map-results__grid').getByRole('button', { name: /市場 A/ }).click();
+  await page.getByRole('tab', { name: '場地圖與機台', exact: true }).click();
+  await page.getByRole('button', { name: /^進階座標/ }).click();
   await expect(page.locator('.market-placement__header h2')).toContainText('市場 A');
   await page.locator('.market-placement__selectors select').first().selectOption('RAT-TPE-001');
 }
