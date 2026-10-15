@@ -1,5 +1,6 @@
 import { getDatabase } from './auth.js';
 import { DEMO_FLOOR_PLANS, MAP_CATALOG } from '../src/data/mapCatalog.js';
+import { getReferenceFloorPlan, REFERENCE_FLOOR_PLANS } from '../src/data/marketFloorPlans.js';
 import type {
   DevicePlacement,
   DevicePlacementInput,
@@ -41,6 +42,8 @@ interface PositionRow {
   observed_at: string | Date;
 }
 
+type MapDatabase = ReturnType<typeof getDatabase>;
+
 function locationFromRow(row: LocationRow): MapLocation {
   const { source_url, ...location } = row;
   return { ...location, ...(source_url ? { source_url } : {}) };
@@ -48,7 +51,9 @@ function locationFromRow(row: LocationRow): MapLocation {
 
 function floorFromRow(row: FloorRow): MarketFloorPlan {
   const { source_url, ...plan } = row;
-  return { ...plan, image_url: plan.image_url.startsWith('data:image/') ? `/api/map/floor-image?floor_plan_id=${encodeURIComponent(plan.floor_plan_id)}` : plan.image_url, ...(source_url ? { source_url } : {}) };
+  const result = { ...plan, image_url: plan.image_url.startsWith('data:image/') ? `/api/map/floor-image?floor_plan_id=${encodeURIComponent(plan.floor_plan_id)}` : plan.image_url, ...(source_url ? { source_url } : {}) };
+  // A conflicting saved ID must never reinterpret old pins on a different image.
+  return getReferenceFloorPlan(result.floor_plan_id) ? parseFloorPlan(result) : result;
 }
 
 function positionFromRow(row: PositionRow): SensorPosition {
@@ -70,15 +75,15 @@ function mergeById<T>(reference: T[], saved: T[], id: (item: T) => string): T[] 
 }
 
 /** A read never writes a catalog row or applies a schema migration. */
-export async function getMapState(): Promise<MapState> {
-  const [locations, floorPlans, placements] = await getDatabase().transaction((sql) => [
+export async function getMapState(database: MapDatabase = getDatabase()): Promise<MapState> {
+  const [locations, floorPlans, placements] = await database.transaction((sql) => [
     sql.query(`SELECT ${LOCATION_COLUMNS} FROM map_locations ORDER BY location_id`),
     sql.query(`SELECT ${FLOOR_METADATA_COLUMNS} FROM map_floor_plans ORDER BY floor_plan_id`),
     sql.query(`${PLACEMENT_QUERY} ORDER BY p.device_id`),
   ], { isolationLevel: 'RepeatableRead', readOnly: true });
   return {
     locations: mergeById(MAP_CATALOG, (locations as LocationRow[]).map(locationFromRow), (item) => item.location_id),
-    floor_plans: mergeById(DEMO_FLOOR_PLANS, (floorPlans as FloorRow[]).map(floorFromRow), (item) => item.floor_plan_id),
+    floor_plans: mergeById([...DEMO_FLOOR_PLANS, ...REFERENCE_FLOOR_PLANS], (floorPlans as FloorRow[]).map(floorFromRow), (item) => item.floor_plan_id),
     placements: (placements as PlacementRow[]).map(placementFromRow),
   };
 }
@@ -100,8 +105,7 @@ export async function saveMapLocation(location: MapLocation): Promise<MapLocatio
 }
 
 /** Catalog rows only become persistent when an administrator saves a related item. */
-async function ensureLocation(locationId: string): Promise<void> {
-  const sql = getDatabase();
+async function ensureLocation(locationId: string, sql: MapDatabase): Promise<void> {
   const rows = await sql.query('SELECT location_id FROM map_locations WHERE location_id = $1', [locationId]);
   if (rows.length) return;
   const reference = MAP_CATALOG.find((item) => item.location_id === locationId);
@@ -111,11 +115,12 @@ async function ensureLocation(locationId: string): Promise<void> {
   await sql.query(`INSERT INTO map_locations (${LOCATION_COLUMNS}) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (location_id) DO NOTHING`, locationParameters(location));
 }
 
-export async function saveFloorPlan(plan: MarketFloorPlan): Promise<MarketFloorPlan> {
-  await ensureLocation(plan.location_id);
+export async function saveFloorPlan(input: MarketFloorPlan, database: MapDatabase = getDatabase()): Promise<MarketFloorPlan> {
+  const plan = getReferenceFloorPlan(input.floor_plan_id) ? parseFloorPlan(input) : input;
+  await ensureLocation(plan.location_id, database);
   const parameters = [plan.floor_plan_id, plan.location_id, plan.name, plan.image_url, plan.width, plan.height,
     plan.source_label, plan.source_url ?? null, plan.is_demo];
-  const results = await getDatabase().transaction((sql) => [
+  const results = await database.transaction((sql) => [
     // Lock even an absent ID to serialize concurrent creation and metadata updates.
     sql.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [plan.floor_plan_id]),
     sql.query(`INSERT INTO map_floor_plans (${FLOOR_COLUMNS}) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
@@ -140,27 +145,30 @@ export async function getFloorImage(floorPlanId: string): Promise<{ body: Uint8A
   return { body: Uint8Array.from(Buffer.from(match[2], 'base64')), contentType: match[1] };
 }
 
-async function ensureFloorPlan(floorPlanId: string, locationId: string): Promise<void> {
-  const rows = await getDatabase().query('SELECT location_id FROM map_floor_plans WHERE floor_plan_id = $1', [floorPlanId]) as { location_id: string }[];
+async function ensureFloorPlan(floorPlanId: string, locationId: string, database: MapDatabase): Promise<void> {
+  const reference = getReferenceFloorPlan(floorPlanId);
+  if (reference && reference.location_id !== locationId) throw new MapRequestError('平面圖不屬於選取的場域。');
+  const rows = await database.query(`SELECT ${reference ? FLOOR_COLUMNS : 'location_id'} FROM map_floor_plans WHERE floor_plan_id = $1`, [floorPlanId]) as FloorRow[];
   if (rows.length) {
     if (rows[0].location_id !== locationId) throw new MapRequestError('平面圖不屬於選取的場域。');
+    if (reference) floorFromRow(rows[0]);
     return;
   }
-  const demo = DEMO_FLOOR_PLANS.find((item) => item.floor_plan_id === floorPlanId && item.location_id === locationId);
-  if (!demo) throw new MapRequestError('平面圖不存在或不屬於選取的場域。');
-  await saveFloorPlan(parseFloorPlan(demo, true));
+  const bundled = reference ?? DEMO_FLOOR_PLANS.find((item) => item.floor_plan_id === floorPlanId && item.location_id === locationId);
+  if (!bundled) throw new MapRequestError('平面圖不存在或不屬於選取的場域。');
+  await saveFloorPlan(parseFloorPlan(bundled, true), database);
 }
 
-async function getDevicePlacement(deviceId: string): Promise<DevicePlacement | null> {
-  const rows = await getDatabase().query(`${PLACEMENT_QUERY} WHERE p.device_id = $1`, [deviceId]) as PlacementRow[];
+async function getDevicePlacement(deviceId: string, database: MapDatabase = getDatabase()): Promise<DevicePlacement | null> {
+  const rows = await database.query(`${PLACEMENT_QUERY} WHERE p.device_id = $1`, [deviceId]) as PlacementRow[];
   return rows[0] ? placementFromRow(rows[0]) : null;
 }
 
-export async function saveDevicePlacement(placement: DevicePlacementInput): Promise<DevicePlacement> {
-  await ensureLocation(placement.location_id);
-  if (placement.floor_plan_id) await ensureFloorPlan(placement.floor_plan_id, placement.location_id);
+export async function saveDevicePlacement(placement: DevicePlacementInput, database: MapDatabase = getDatabase()): Promise<DevicePlacement> {
+  await ensureLocation(placement.location_id, database);
+  if (placement.floor_plan_id) await ensureFloorPlan(placement.floor_plan_id, placement.location_id, database);
   const { device_id, location_id, latitude, longitude, floor_plan_id, floor_x, floor_y, placement_note } = placement;
-  await getDatabase().transaction((sql) => [
+  await database.transaction((sql) => [
     // Images are immutable for each plan ID, so a delayed pin still refers to its original image.
     sql.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [floor_plan_id ?? `device:${device_id}`]),
     sql.query(`INSERT INTO map_device_placements (device_id, location_id, latitude, longitude, floor_plan_id, floor_x, floor_y, placement_note)
@@ -169,7 +177,7 @@ export async function saveDevicePlacement(placement: DevicePlacementInput): Prom
       floor_x = EXCLUDED.floor_x, floor_y = EXCLUDED.floor_y, placement_note = EXCLUDED.placement_note, updated_at = NOW()`,
     [device_id, location_id, latitude, longitude, floor_plan_id, floor_x, floor_y, placement_note]),
   ]);
-  const saved = await getDevicePlacement(device_id);
+  const saved = await getDevicePlacement(device_id, database);
   if (!saved) throw new Error('Map placement save failed');
   return saved;
 }

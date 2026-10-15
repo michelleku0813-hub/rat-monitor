@@ -153,3 +153,49 @@ test('custom machine IDs require valid input and register only after saving thei
   await expect(page.getByRole('textbox', { name: '位置備註', exact: true })).toHaveValue('北側入口的新機台');
   await expect(page.locator('.market-placement__marker.is-selected')).toContainText('FIELD-NEW-009');
 });
+
+test('built-in market maps are ready to use and saved pins survive closing the tab', async ({ page, context }) => {
+  const allowMap = async (target: Page) => {
+    await target.route('**/api/auth/me', route => route.fulfill({ json: { user: { username: 'reference-test', role: 'operator' } } }));
+    await target.route('**/api/auth/activity', route => route.fulfill({ json: { ok: true } }));
+    await target.route('https://tile.openstreetmap.org/**', route => route.abort());
+  };
+  await allowMap(page);
+  await page.goto('/locations');
+  await page.getByRole('combobox', { name: '目前場域', exact: true }).selectOption('TPE-MARKET-026');
+  await page.getByRole('tab', { name: '場地圖與機台', exact: true }).click();
+  const plan = page.getByRole('combobox', { name: '市場平面圖', exact: true });
+  await expect(plan.locator('option')).toHaveCount(3);
+  const selectedPlan = await plan.inputValue();
+  const image = page.locator('.market-placement__image > img');
+  await expect(image).toHaveAttribute('src', /^\/maps\/reference\//);
+  await expect.poll(() => image.evaluate(element => (element as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+  await page.getByRole('combobox', { name: '機台', exact: true }).selectOption('RAT-TPE-001');
+  const canvas = page.locator('.market-placement__image-target');
+  const bounds = await canvas.boundingBox();
+  expect(bounds).not.toBeNull();
+  await canvas.click({ position: { x: bounds!.width * .63, y: bounds!.height * .41 } });
+  await page.getByRole('button', { name: '儲存並移至此場域', exact: true }).click();
+  await expect(page.getByText('機台已配置至此場域，位置已儲存。', { exact: true })).toBeVisible();
+  const stored = await savedMap(page);
+  const pin = stored.placements.find(item => item.device_id === 'RAT-TPE-001')!;
+  expect(pin.floor_plan_id).toBe(selectedPlan);
+  expect(pin.floor_x).toBeCloseTo(.63, 1);
+  expect(pin.floor_y).toBeCloseTo(.41, 1);
+
+  await page.close();
+  const reopened = await context.newPage();
+  await allowMap(reopened);
+  await reopened.goto('/locations');
+  await reopened.getByRole('combobox', { name: '目前場域', exact: true }).selectOption('TPE-MARKET-026');
+  await reopened.getByRole('tab', { name: '場地圖與機台', exact: true }).click();
+  await expect(reopened.locator('.market-placement__marker.is-selected')).toContainText('RAT-TPE-001');
+  await expect(reopened.getByRole('combobox', { name: '市場平面圖', exact: true })).toHaveValue(selectedPlan);
+  const retained = await savedMap(reopened);
+  expect(retained.placements.find(item => item.device_id === 'RAT-TPE-001')).toEqual(pin);
+  await reopened.getByRole('combobox', { name: '目前場域', exact: true }).selectOption('TPE-MARKET-002');
+  await expect(reopened.getByText('規劃圖，非現況圖', { exact: true })).toBeVisible();
+  await reopened.getByRole('button', { name: '＋ 新增平面圖', exact: true }).click();
+  await expect(reopened.getByText('選檔僅預覽，按「儲存平面圖」才保存。', { exact: false })).toBeVisible();
+  await expect(reopened.getByText('自行上傳圖與標記儲存在目前瀏覽器', { exact: false })).toBeVisible();
+});

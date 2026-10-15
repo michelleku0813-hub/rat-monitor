@@ -5,13 +5,17 @@
 ## 啟用正式儲存
 
 1. 先依 [neon-setup.md](neon-setup.md) 建立登入用資料表、管理員與 Vercel 環境變數。
-2. 在同一個 Neon 資料庫 SQL Editor 執行 [neon-map-schema.sql](neon-map-schema.sql)。這會建立獨立的 `map_*` 資料表，並加入明確標示為示範資料的三個場域、三台機台與一張示範平面圖。重跑不覆寫已儲存資料。後端不會自動建表或遷移。
+2. 在同一個 Neon 資料庫 SQL Editor 執行 [neon-map-schema.sql](neon-map-schema.sql)。這會建立獨立的 `map_*` 資料表，並加入明確標示為示範資料的三個場域、三台機台與一張示範平面圖。重跑不覆寫已儲存資料。若先前已套用舊版地圖 schema，只需再執行 [neon-map-reference-plans.sql](neon-map-reference-plans.sql)，更新內建官方圖的精確白名單後，才可儲存官方圖上的標記。全新 schema 已包含相同白名單，無須重複升級。後端不會自動建表或遷移；這些 SQL 需由管理員明確執行。
 3. 在 Vercel 建置環境設定 `VITE_MAP_DATA_MODE=api`，再重新建置與部署。`DATABASE_URL`、`APP_ORIGIN`、登入密鑰及 `MAP_SENSOR_TOKENS` 都只供伺服器使用，不得加上 `VITE_`。
 4. 若要接收實際機台的定位，在伺服器環境設定 `MAP_SENSOR_TOKENS`，格式為 JSON 物件，每台機台各自使用不同的至少 32 字元 base64url 隨機 Token。可在受信任的終端機執行 `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"` 產生 Token；不要提交或分享其輸出。
 
 `VITE_MAP_DATA_MODE=demo` 使用此瀏覽器的示範資料與本機儲存，不會上傳到 Neon，也不會接收後端 GPS。切到 `api` 不會把瀏覽器示範修改自動轉存到正式資料庫。本機 `npm run dev` 只有 Vite 前端；測試正式 API 需使用提供 Vercel Functions 的開發環境，例如 `vercel dev`，並將 `APP_ORIGIN` 設為該環境的確切來源。設定檔需保持被 Git 排除。
 
 官方參考場域目錄隨程式附帶，`GET` 會將它和已儲存場域合併，同一識別碼以 Neon 資料為準。讀取不改動資料庫；第一次儲存參考場域的平面圖或機台時，後端才會將該場域加入資料庫。參考座標是場域入口或代表點，不代表現場機台位置；實際擺放座標需另行確認。
+
+39 張官方場地圖也隨程式附帶，`GET /api/map/state` 在 `floor_plans` 合併其精確中繼資料，圖片直接由公開的 `/maps/reference/...webp` 靜態路徑提供，不必重新上傳。歷史、規劃及未定年版本保留在圖名與來源中。第一次儲存官方圖標記時，後端才將該圖的 canonical row 與必要的場域列加入 Neon，再儲存機台座標；不會將 39 張圖轉成 Base64 存入資料庫。官方圖識別碼為保留值，九個欄位（含來源、尺寸、所屬場域與圖片路徑）必須與內建目錄完全相同，修改會回傳 409。任意遠端圖片或其他靜態路徑仍不被接受；既有保留 ID 若與官方圖衝突也會拒絕，避免將舊標記套到不同圖面。
+
+SQL 白名單與初始 schema 由同一份 [marketFloorPlans.ts](../src/data/marketFloorPlans.ts) 產生。更動圖面目錄後執行 `node --import tsx scripts/generate-map-reference-schema.ts`，以 `--check` 檢查兩份 SQL 是否同步；再依上述順序明確套用更新。圖像與 ID 維持不變，換圖使用新 ID。
 
 ## 管理員端點
 
@@ -31,9 +35,9 @@
 
 平面圖 `image_url` 上傳值為 `data:image/png;base64,...`、`data:image/jpeg;base64,...` 或 `data:image/webp;base64,...`。原始圖片最多 2 MiB，寬高各最多 8000 像素，後端驗證檔案標頭與宣告尺寸。JSON 全文限制 3 MiB，包含串流請求；超過回傳 413。系統內建的 `/maps/demo-market-floor.svg` 只允許固定 1200 × 800 且 `is_demo: true`。不接受任意遠端圖片網址、SVG 上傳或 HTML。
 
-正式 API 的場域資料與上傳回應只提供圖片中繼資料，`image_url` 為同來源的 `/api/map/floor-image?floor_plan_id=...`；瀏覽器以管理員 Cookie 單獨載入圖片。這讓多張平面圖不會把 `state` 回應撐過 Vercel 的回應大小限制。Neon 保留上傳的 Data URL；示範模式的圖片仍直接存在本機儲存，示範 SVG 保持原路徑。此版更新平面圖來源等中繼資料時仍須提交原始 Data URL，畫面上傳流程會以新識別碼新增圖面。
+正式 API 的場域資料與上傳回應只提供圖片中繼資料；管理員上傳圖的 `image_url` 為同來源的 `/api/map/floor-image?floor_plan_id=...`，瀏覽器以管理員 Cookie 單獨載入圖片。這讓多張平面圖不會把 `state` 回應撐過 Vercel 的回應大小限制。Neon 保留上傳的 Data URL；內建官方圖與示範 SVG 保持各自的靜態路徑。示範模式的自行上傳圖直接存在本機儲存。此版更新上傳圖來源等中繼資料時仍須提交原始 Data URL，畫面上傳流程會以新識別碼新增圖面。
 
-平面圖識別碼對應固定的圖片、尺寸與場域，這三項不可覆寫；重用識別碼更換圖片會回傳 409。上傳新圖片時建立新的 `floor_plan_id`，再將機台移到新圖並重新點選。原有點位仍屬於原圖，不會被誤套到新圖；延遲送達的舊圖點位也只會寫入舊圖。圖名、來源與示範標示可修改。資料庫 Trigger 同樣維持此規則。
+平面圖識別碼對應固定的圖片、尺寸與場域，這三項不可覆寫；重用識別碼更換圖片會回傳 409。上傳新圖片時建立新的 `floor_plan_id`，再將機台移到新圖並重新點選。原有點位仍屬於原圖，不會被誤套到新圖；延遲送達的舊圖點位也只會寫入舊圖。自行上傳圖的圖名、來源與示範標示可修改；內建官方圖維持完整 canonical metadata。資料庫 Trigger 與精確白名單同樣維持此規則。
 
 ## 感測器端點
 

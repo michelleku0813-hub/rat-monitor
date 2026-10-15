@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createDemoMapState, createMapService } from '../src/services/mapService.ts';
+import { REFERENCE_FLOOR_PLANS } from '../src/data/marketFloorPlans.ts';
 import type { DevicePlacementInput, MapState, MarketFloorPlan } from '../src/types/map.ts';
 
 const STORAGE_KEY = 'rat-monitor-map-v1';
@@ -68,6 +69,7 @@ test('corrupt browser records cannot reach formatting components or be silently 
 test('saved edits override reference rows while newly bundled reference locations remain available', async () => {
   const state = createDemoMapState();
   state.locations = state.locations.slice(0, 3);
+  state.floor_plans = state.floor_plans.filter((plan) => plan.location_id.startsWith('LOC-'));
   state.locations[0].name = '現場修改名稱';
   const storage = memoryStorage(JSON.stringify(state));
   const loaded = await createMapService({ mode: 'demo', storage }).getMapState();
@@ -154,4 +156,52 @@ test('API upload sends data URL but accepts metadata image URL and uses session 
 test('browser storage failure is surfaced instead of reporting a successful save', async () => {
   const service = createMapService({ mode: 'demo', storage: { getItem() { return null; }, setItem() { throw new Error('Quota exceeded'); } } });
   await assert.rejects(service.saveMapLocation(createDemoMapState().locations[0]), /無法儲存地圖設定/);
+});
+
+
+test('bundled plans join existing browser uploads without storing image bytes or losing saved pins', async () => {
+  const old = createDemoMapState();
+  // Simulate an older release before reference floor plans were bundled.
+  old.floor_plans = old.floor_plans.filter((plan) => plan.location_id.startsWith('LOC-'));
+  old.floor_plans.push(rasterPlan());
+  old.placements[0] = { ...old.placements[0], floor_plan_id: 'PLAN-TEST', floor_x: 0.64, floor_y: 0.31 };
+  const storage = memoryStorage(JSON.stringify(old));
+  const service = createMapService({ mode: 'demo', storage });
+  const loaded = await service.getMapState();
+  assert.equal(loaded.floor_plans.length, old.floor_plans.length + REFERENCE_FLOOR_PLANS.length);
+  assert.deepEqual(loaded.floor_plans.find((plan) => plan.floor_plan_id === 'PLAN-TEST'), rasterPlan());
+  assert.equal(loaded.placements[0].floor_x, 0.64);
+  assert.equal(storage.writes, 0);
+  const official = REFERENCE_FLOOR_PLANS[0];
+  await service.saveDevicePlacement({ ...inputPlacement(), location_id: official.location_id,
+    floor_plan_id: official.floor_plan_id, floor_x: 0.37, floor_y: 0.58 });
+  const reopened = await createMapService({ mode: 'demo', storage }).getMapState();
+  assert.equal(reopened.floor_plans.find((plan) => plan.floor_plan_id === official.floor_plan_id)?.image_url, official.image_url);
+  assert.equal(reopened.floor_plans.find((plan) => plan.floor_plan_id === 'PLAN-TEST')?.image_url, png);
+  const savedPin = reopened.placements.find((placement) => placement.device_id === 'RAT-TPE-001')!;
+  assert.equal(savedPin.floor_plan_id, official.floor_plan_id);
+  assert.equal(savedPin.floor_x, 0.37);
+  assert.ok(official.image_url.startsWith('/maps/reference/'));
+  assert.ok(storage.value!.length < 100_000);
+});
+
+test('reference IDs accept only canonical metadata and never permit arbitrary static or remote images', async () => {
+  const storage = memoryStorage();
+  const service = createMapService({ mode: 'demo', storage });
+  const official = REFERENCE_FLOOR_PLANS[0];
+  assert.deepEqual(await service.saveFloorPlan({ ...official }), official);
+  for (const overrides of [
+    { image_url: '/maps/reference/not-in-catalog.webp' },
+    { image_url: 'https://external.example.com/plan.webp' },
+    { image_url: png, width: 1, height: 1 },
+    { width: official.width + 1 },
+    { location_id: 'LOC-001' },
+    { name: 'Pretend to be a current map' },
+    { source_label: 'Changed version' },
+    { source_url: 'https://other.example.com/' },
+    { is_demo: true },
+  ]) await assert.rejects(service.saveFloorPlan({ ...official, ...overrides }), /格式不正確/);
+  await assert.rejects(service.saveFloorPlan({ ...official, floor_plan_id: 'UNLISTED-REFERENCE' }), /格式不正確/);
+  const apiState = createDemoMapState();
+  assert.equal((await createMapService({ mode: 'api', fetcher: async () => Response.json(apiState) }).getMapState()).floor_plans.length, apiState.floor_plans.length);
 });

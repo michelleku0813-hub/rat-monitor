@@ -1,5 +1,6 @@
 import { LOCATIONS } from '../data/mock/locations';
 import { MAP_CATALOG, DEMO_FLOOR_PLANS } from '../data/mapCatalog';
+import { REFERENCE_FLOOR_PLANS, getReferenceFloorPlan, isReferenceFloorPlan } from '../data/marketFloorPlans';
 import type { DevicePlacement, DevicePlacementInput, MapLocation, MapState, MarketFloorPlan, SensorPosition } from '../types/map';
 
 export const MAP_DATA_MODE = import.meta.env?.VITE_MAP_DATA_MODE === 'api' ? 'api' : 'demo';
@@ -11,7 +12,7 @@ export function createDemoMapState(): MapState {
       ...LOCATIONS.map(({ map_position: _position, ...location }) => ({ ...location, coordinate_source: 'demo' as const })),
       ...MAP_CATALOG.map((location) => ({ ...location })),
     ],
-    floor_plans: DEMO_FLOOR_PLANS.map((plan) => ({ ...plan })),
+    floor_plans: [...DEMO_FLOOR_PLANS, ...REFERENCE_FLOOR_PLANS].map((plan) => ({ ...plan })),
     placements: LOCATIONS.map((location, index) => ({
       device_id: `RAT-TPE-${String(index + 1).padStart(3, '0')}`,
       location_id: location.location_id,
@@ -130,6 +131,11 @@ function parseFloorPlan(value: unknown, allowProtectedImage = false): MarketFloo
   requireValue(Number.isInteger(width) && Number.isInteger(height) && typeof item.is_demo === 'boolean' && typeof item.image_url === 'string');
   const image = item.image_url;
   const floorPlanId = id(item.floor_plan_id);
+  const reference = getReferenceFloorPlan(floorPlanId);
+  if (reference) {
+    requireValue(isReferenceFloorPlan(item));
+    return { ...reference };
+  }
   if (image === '/maps/demo-market-floor.svg') requireValue(item.is_demo && width === 1200 && height === 800);
   else if (allowProtectedImage && image === `/api/map/floor-image?floor_plan_id=${encodeURIComponent(floorPlanId)}`) { /* Authenticated binary image endpoint. */ }
   else {
@@ -219,6 +225,7 @@ function readDemoState(storage?: BrowserMapStorage): MapState {
     return {
       ...parsed,
       locations: [...new Map([...initial.locations, ...parsed.locations].map((location) => [location.location_id, location])).values()],
+      floor_plans: [...new Map([...initial.floor_plans, ...parsed.floor_plans].map((plan) => [plan.floor_plan_id, plan])).values()],
     };
   } catch { throw new Error('本機地圖設定損毀，原始資料仍保留；請修復或清除此網站的地圖儲存資料後重試。'); }
 }

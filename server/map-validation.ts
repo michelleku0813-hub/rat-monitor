@@ -1,4 +1,5 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
+import { getReferenceFloorPlan, isReferenceFloorPlan } from '../src/data/marketFloorPlans.js';
 import type {
   DevicePlacementInput,
   MapLocation,
@@ -186,6 +187,15 @@ export function validateFloorImage(image: unknown, width: unknown, height: unkno
 
 export function parseFloorPlan(value: unknown, allowDemo = false): MarketFloorPlan {
   const input = record(value);
+  const reference = typeof input.floor_plan_id === 'string' ? getReferenceFloorPlan(input.floor_plan_id) : undefined;
+  if (reference) {
+    // These IDs identify a specific bundled image and its published metadata.
+    // Never let a client reuse one for an upload, another location, or another URL.
+    if (!isReferenceFloorPlan(input)) {
+      throw new MapRequestError('官方參考平面圖的識別碼、圖片與來源資料不可修改；請以新的識別碼上傳其他圖面。', 409);
+    }
+    return { ...reference };
+  }
   if (typeof input.is_demo !== 'boolean') invalid('請標示平面圖是否為示範資料。');
   if (input.image_url === DEMO_FLOOR_IMAGE && !input.is_demo) invalid('示範平面圖必須保留示範標示。');
   const url = sourceUrl(input.source_url);

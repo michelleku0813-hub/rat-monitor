@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, MouseEvent } from 'react';
 import type { DevicePlacement, DevicePlacementInput, MapLocation, MarketFloorPlan } from '../types/map';
+import { MAP_DATA_MODE } from '../services/mapService';
 import '../styles/market-placement.css';
 
 export interface MarketPlacementEditorProps {
@@ -77,6 +78,15 @@ function validNumber(value: string, min: number, max: number): boolean {
   return value.trim() !== '' && Number.isFinite(Number(value)) && Number(value) >= min && Number(value) <= max;
 }
 
+function floorPlanVersion(plan: MarketFloorPlan | undefined): string | null {
+  if (!plan || plan.is_demo) return null;
+  const description = `${plan.name} ${plan.source_label}`;
+  if (/未定年|年份不明|年代未明/.test(description)) return '未定年圖，請核對現況';
+  if (/規劃|設計圖|計畫圖|計劃圖/.test(description)) return '規劃圖，非現況圖';
+  if (/歷史|舊圖|早期圖/.test(description)) return '歷史圖面，請核對現況';
+  return null;
+}
+
 /** Indoor image positions and geographic coordinates are intentionally separate. */
 export function MarketPlacementEditor(props: MarketPlacementEditorProps) {
   if (!props.location) {
@@ -134,6 +144,7 @@ function LocationPlacementEditor({
   const alive = useRef(true);
   const busy = saving || savingPlan;
   const selectedPlan = plans.find((plan) => plan.floor_plan_id === planId);
+  const versionNotice = floorPlanVersion(selectedPlan);
   const selectedPlacement = placements.find((placement) => placement.device_id === deviceId && placement.location_id === location.location_id);
   const sensor = placements.find((placement) => placement.device_id === deviceId)?.sensor_position;
   const isMoving = Boolean(deviceId && !locationDevices.some((device) => device.device_id === deviceId));
@@ -151,6 +162,7 @@ function LocationPlacementEditor({
   const canSave = canEdit && availableDevices.some((device) => device.device_id === deviceId)
     && coordinateValid && pointValid && dirty && !busy
     && (!coordinateEmpty || hasPoint || Boolean(selectedPlacement));
+  const placementSaveLabel = isNewDevice ? '新增並儲存機台' : isMoving ? '儲存並移至此場域' : '儲存機台位置';
 
   useEffect(() => {
     alive.current = true;
@@ -228,7 +240,7 @@ function LocationPlacementEditor({
     const y = Math.max(0, Math.min(1, (event.clientY - bounds.top) / bounds.height));
     setDraft((current) => ({ ...current, floorPlanId: planId, x: percentString(x * 100), y: percentString(y * 100) }));
     setError('');
-    setStatus('位置已標記；按「儲存機台位置」後生效。');
+    setStatus(`位置已標記；按「${placementSaveLabel}」後生效。`);
   };
 
   const uploadImage = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -277,7 +289,9 @@ function LocationPlacementEditor({
       setUpload(null);
       setPlanName('');
       setPlanSource('');
-      setStatus('平面圖已新增；選擇機台後即可標記位置。');
+      setStatus(MAP_DATA_MODE === 'api'
+        ? '平面圖已儲存至後端；選擇機台後即可標記位置。'
+        : '平面圖已儲存於此瀏覽器；關閉網頁後仍保留。');
     } catch (cause) {
       if (alive.current) setUploadError(errorMessage(cause));
     } finally {
@@ -360,6 +374,7 @@ function LocationPlacementEditor({
 
       {uploadOpen && canEdit && <div id={`${fieldPrefix}-upload`} className="market-placement__upload">
         <div className="market-placement__upload-heading"><strong>上傳市場平面圖</strong><span>PNG / JPEG / WebP · 最大 2 MB · 各邊不超過 8,000 px</span></div>
+        <div className="market-placement__storage-note"><p>選檔僅預覽，按「儲存平面圖」才保存。內建圖隨網站提供，可跨瀏覽器查看。</p><p>{MAP_DATA_MODE === 'api' ? '自行上傳圖與標記儲存成功後保存在後端，可使用同帳號登入此系統再次存取。' : '自行上傳圖與標記儲存在目前瀏覽器，關閉網頁後以同一網址／瀏覽器開啟仍保留；不跨裝置同步。清除資料或無痕模式可能遺失。'}</p></div>
         <div className="market-placement__upload-grid">
           <label className="market-placement__file" htmlFor={`${fieldPrefix}-image`}>選擇圖片<input id={`${fieldPrefix}-image`} type="file" accept="image/png,image/jpeg,image/webp" onChange={uploadImage} disabled={busy || readingImage} /></label>
           <label htmlFor={`${fieldPrefix}-plan-name`}>平面圖名稱<input id={`${fieldPrefix}-plan-name`} value={planName} onChange={(event) => setPlanName(event.target.value)} maxLength={100} placeholder="例：一樓果菜區" disabled={busy} /></label>
@@ -368,13 +383,13 @@ function LocationPlacementEditor({
         {readingImage && <p className="market-placement__hint" role="status">正在讀取圖片…</p>}
         {upload && <div className="market-placement__preview"><img src={upload.dataUrl} alt="待儲存的市場平面圖預覽" /><span>{upload.filename} · {upload.width} × {upload.height} px</span></div>}
         {uploadError && <p className="market-placement__error" role="alert">{uploadError}</p>}
-        <div className="market-placement__upload-footer"><span>圖片儲存後即可標記機台位置。</span><button className="market-placement__button" type="button" onClick={savePlan} disabled={busy || readingImage || !upload || !planName.trim() || !planSource.trim()}>{savingPlan ? '儲存平面圖中…' : '儲存平面圖'}</button></div>
+        <div className="market-placement__upload-footer"><span>圖片與機台位置分別儲存。</span><button className="market-placement__button" type="button" onClick={savePlan} disabled={busy || readingImage || !upload || !planName.trim() || !planSource.trim()}>{savingPlan ? '儲存平面圖中…' : '儲存平面圖'}</button></div>
       </div>}
 
       <div className="market-placement__workspace">
         <div className="market-placement__floor">
           <div className="market-placement__floor-heading">
-            <div><span className="market-placement__canvas-label">場地平面圖</span>{selectedPlan?.is_demo && <span className="market-placement__demo">示意圖，非實際市場配置</span>}</div>
+            <div><span className="market-placement__canvas-label">{selectedPlan?.name ?? '場地平面圖'}</span>{selectedPlan?.is_demo && <span className="market-placement__demo">示意圖，非實際市場配置</span>}{versionNotice && <span className="market-placement__version">{versionNotice}</span>}</div>
             {selectedPlan && <span className="market-placement__marker-count">{markers.length} 台已標記</span>}
           </div>
           {selectedPlan ? <>
@@ -441,7 +456,7 @@ function LocationPlacementEditor({
               </>}
             </div>
 
-            {canEdit && <div className="market-placement__save"><button className="market-placement__button" type="button" onClick={savePlacement} disabled={!canSave}>{saving ? '儲存位置中…' : isNewDevice ? '新增並儲存機台' : isMoving ? '儲存並移至此場域' : '儲存機台位置'}</button><button className="market-placement__clear" type="button" disabled={busy || !dirty} onClick={() => { setDraft(draftFromPlacement(selectedPlacement)); setStatus(''); setError(''); }}>還原修改</button></div>}
+            {canEdit && <div className="market-placement__save"><button className="market-placement__button" type="button" onClick={savePlacement} disabled={!canSave}>{saving ? '儲存位置中…' : placementSaveLabel}</button><p className="market-placement__save-hint">標記與座標修改後，按「{placementSaveLabel}」才會保存。</p><button className="market-placement__clear" type="button" disabled={busy || !dirty} onClick={() => { setDraft(draftFromPlacement(selectedPlacement)); setStatus(''); setError(''); }}>還原修改</button></div>}
           </> : <div className="market-placement__no-device"><span aria-hidden="true">⌖</span><strong>選擇一台機台</strong><p>{canEdit ? '從上方選擇既有機台，或新增機台後開始標記。' : '此場域目前沒有已配置的機台。'}</p></div>}
         </aside>
       </div>
